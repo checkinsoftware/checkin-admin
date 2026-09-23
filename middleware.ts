@@ -11,14 +11,19 @@ const ADMIN_LOGIN = "/mng-x7k9/login";
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  // BuildKhata app: protect /build except its own login page.
+  // BuildKhata app: protect /build except its own login page and static
+  // assets (manifest, icon — any path with a file extension under /build).
   if (pathname === "/build" || pathname.startsWith("/build/")) {
-    const build = await verifyBuildToken(req.cookies.get(BUILD_COOKIE)?.value);
-    if (pathname !== "/build/login" && !build) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/build/login";
-      url.search = "";
-      return NextResponse.redirect(url);
+    const lastSeg = pathname.startsWith("/build/") ? pathname.slice("/build/".length) : "";
+    const isAsset = lastSeg.includes(".");
+    if (pathname !== "/build/login" && !isAsset) {
+      const build = await verifyBuildToken(req.cookies.get(BUILD_COOKIE)?.value);
+      if (!build) {
+        const url = req.nextUrl.clone();
+        url.pathname = "/build/login";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
     }
     return NextResponse.next();
   }
