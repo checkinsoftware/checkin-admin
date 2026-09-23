@@ -113,3 +113,45 @@ CREATE TABLE IF NOT EXISTS magic_links (
 
 CREATE INDEX IF NOT EXISTS magic_links_mobile_idx ON magic_links (mobile);
 CREATE INDEX IF NOT EXISTS magic_links_expires_idx ON magic_links (expires_at);
+
+
+-- ---------------------------------------------------------------------------
+-- BuildKhata — builder / construction project expense book. A small team
+-- (~5 site staff) logs, per project, payment received + material purchase +
+-- labour payment, and sees balance and category-wise totals. Shared data:
+-- every logged-in user sees the same projects and entries.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS build_users (
+  id            BIGSERIAL PRIMARY KEY,
+  username      TEXT        NOT NULL UNIQUE,
+  name          TEXT        NOT NULL,
+  password_hash TEXT        NOT NULL,
+  active        BOOLEAN     NOT NULL DEFAULT TRUE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_login_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS build_projects (
+  id         BIGSERIAL PRIMARY KEY,
+  name       TEXT        NOT NULL,
+  client     TEXT,
+  archived   BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS build_entries (
+  id         BIGSERIAL PRIMARY KEY,
+  project_id BIGINT      NOT NULL REFERENCES build_projects(id) ON DELETE CASCADE,
+  kind       TEXT        NOT NULL CHECK (kind IN ('IN','MAT','LAB')),
+  category   TEXT,
+  amount     NUMERIC(14,2) NOT NULL,
+  entry_date DATE        NOT NULL,
+  party      TEXT,
+  note       TEXT,
+  user_name  TEXT        NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS build_entries_project_idx ON build_entries (project_id);
+CREATE INDEX IF NOT EXISTS build_entries_date_idx    ON build_entries (entry_date DESC);

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { USER_COOKIE, verifyUserToken } from "@/lib/user-auth";
+import { BUILD_COOKIE, verifyBuildToken } from "@/lib/build-auth";
 
 // Admin panel lives under a secret base path (not /admin). /admin and /login
 // no longer exist as routes, so they 404 for anyone who guesses them.
@@ -9,6 +10,19 @@ const ADMIN_LOGIN = "/mng-x7k9/login";
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // BuildKhata app: protect /build except its own login page.
+  if (pathname === "/build" || pathname.startsWith("/build/")) {
+    const build = await verifyBuildToken(req.cookies.get(BUILD_COOKIE)?.value);
+    if (pathname !== "/build/login" && !build) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/build/login";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
   const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
 
   // Protect the whole admin area except its own login page.
@@ -46,5 +60,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/mng-x7k9", "/mng-x7k9/:path*", "/user", "/user/:path*"],
+  matcher: ["/mng-x7k9", "/mng-x7k9/:path*", "/user", "/user/:path*", "/build", "/build/:path*"],
 };

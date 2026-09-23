@@ -34,6 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <NavLink href="/mng-x7k9/sms" label="SMS List" icon="✉" />
                 <NavLink href="/mng-x7k9/webusers" label="Web Users" icon="☏" />
                 <NavLink href="/mng-x7k9/users" label="Users" icon="◫" />
+                <NavLink href="/mng-x7k9/build-setup" label="BuildKhata" icon="▤" />
                 <NavLink href="/mng-x7k9/account" label="Change password" icon="⚿" />
               </>
             )}

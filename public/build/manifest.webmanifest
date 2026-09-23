@@ -1,0 +1,14 @@
+{
+  "name": "BuildKhata",
+  "short_name": "BuildKhata",
+  "description": "Builder project expense book — payments, material and labour with category-wise totals.",
+  "start_url": "/build",
+  "scope": "/build",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F1E9",
+  "theme_color": "#A85B0C",
+  "icons": [
+    { "src": "/build/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
