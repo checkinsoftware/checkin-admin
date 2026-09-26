@@ -166,7 +166,7 @@
   }
   function startPolling() {
     clearInterval(st.pollTimer);
-    st.pollTimer = setInterval(function () { if (st.loggedIn && !document.hidden) refreshMe(); }, 30000);
+    st.pollTimer = setInterval(function () { if (st.loggedIn && !document.hidden) refreshMe(); }, 90000);
   }
   async function sendOtp() {
     if (st.busy) return; st.busy = true; st.err = ""; renderLogin();
@@ -183,7 +183,9 @@
       var r = await fetch(API.verify, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ mobile: st.mobile, code: st.code }) });
       var d = await r.json();
       if (!r.ok) { st.err = d.error || "Wrong code."; st.busy = false; renderLogin(); return; }
-      st.busy = false; closeLogin(); await refreshMe(); showSms("messages"); startPolling();
+      st.busy = false; closeLogin(); await refreshMe(); showSms("messages");
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
+      else startPolling();
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
   async function logout() {
@@ -583,9 +585,10 @@
       else if (onSmsPath) { if (st.loggedIn) showSms("messages"); else { hideSms(); openLogin(); } }
       else if (!st.loggedIn && !skipped) setTimeout(openLogin, 700);
       if (st.loggedIn) {
-        startPolling();
-        // Already-allowed users: silently refresh the FCM token in the DB.
+        // Push-enabled guests don't need the poll loop running too — askPush()
+        // falls back to startPolling() itself if FCM isn't actually available.
         if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
+        else startPolling();
       }
     });
   }
