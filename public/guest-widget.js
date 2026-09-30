@@ -6,8 +6,8 @@
   if (window.__ckGuest) return;
   window.__ckGuest = true;
 
-  var API = { me: "/api/user/messages", send: "/api/user/otp/send", verify: "/api/user/otp/verify", logout: "/api/user/logout", pushCfg: "/api/push/config", device: "/api/user/device" };
-  var st = { loggedIn: false, mobile: "", name: "", total: 0, messages: [], date: "", step: "mobile", code: "", dev: null, skip: false, busy: false, err: "", view: "messages", profile: {} };
+  var API = { me: "/api/user/messages", send: "/api/user/otp/send", verify: "/api/user/otp/verify", pwlogin: "/api/user/password/login", setpw: "/api/user/password", logout: "/api/user/logout", pushCfg: "/api/push/config", device: "/api/user/device" };
+  var st = { loggedIn: false, mobile: "", name: "", total: 0, messages: [], date: "", step: "mobile", code: "", password: "", dev: null, skip: false, busy: false, err: "", view: "messages", profile: {} };
   var RATE_URL = "https://www.google.com/search?q=Hotel+Arco+Palace+Jaipur+review";
 
   var css =
@@ -188,11 +188,24 @@
       else startPolling();
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
+  // Password login — the fallback when OTP delivery isn't available. Same
+  // shape as verify(), just a different endpoint/payload.
+  async function passwordLogin() {
+    if (st.busy) return; st.busy = true; st.err = ""; renderLogin();
+    try {
+      var r = await fetch(API.pwlogin, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ mobile: st.mobile, password: st.password }) });
+      var d = await r.json();
+      if (!r.ok) { st.err = d.error || "Wrong mobile number or password."; st.busy = false; renderLogin(); return; }
+      st.busy = false; st.password = ""; closeLogin(); await refreshMe(); showSms("messages");
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
+      else startPolling();
+    } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
+  }
   async function logout() {
     if (st.fcmToken) { try { await fetch(API.device, { method: "DELETE", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ token: st.fcmToken }) }); } catch (e) {} }
     try { await fetch(API.logout, { method: "POST", credentials: "same-origin" }); } catch (e) {}
     clearInterval(st.pollTimer);
-    st.loggedIn = false; st.step = "mobile"; st.mobile = ""; st.code = ""; st.date = ""; st.view = "messages"; st.lastTop = undefined; st.fcmOn = false; st.fcmToken = null;
+    st.loggedIn = false; st.step = "mobile"; st.mobile = ""; st.code = ""; st.password = ""; st.date = ""; st.view = "messages"; st.lastTop = undefined; st.fcmOn = false; st.fcmToken = null;
     hideSms(); await refreshMe();
   }
 
@@ -201,9 +214,11 @@
     h += '<div class="ckban"><button class="ckx" data-a="closeLogin">✕</button><div class="ckbanrow"><div class="ckbadge">🔔</div><div><div style="font-weight:700">Login Now</div><div style="font-size:12px;opacity:.92">Login karke apne hotel messages &amp; alerts turant paayein ✨</div></div></div></div>';
     h += '<div class="ckh">Login with Mobile</div><div class="cksub">Hum aapke number par OTP bhejenge.</div>';
     if (st.step === "mobile") {
+      var pwMode = !!(st.password && st.password.length);
       h += '<div class="ckrow"><span class="ckpre">🇮🇳 +91</span><input class="ckinp" id="ckmob" inputmode="numeric" maxlength="10" placeholder="Enter mobile number" value="' + esc(st.mobile) + '"></div>';
+      h += '<input class="ckinp" id="ckpw" type="password" placeholder="Password (agar set ho) — optional" style="margin-top:8px" value="' + esc(st.password || "") + '">';
       if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
-      h += '<button class="ckbtn" data-a="send"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? "Sending…" : "Send OTP →") + "</button>";
+      h += '<button class="ckbtn" id="ckmainbtn" data-a="' + (pwMode ? "pwlogin" : "send") + '"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? (pwMode ? "Logging in…" : "Sending…") : (pwMode ? "Login →" : "Send OTP →")) + "</button>";
       h += '<button class="ckskip" data-a="closeLogin">Skip for now</button>';
     } else {
       h += '<div class="cksub" style="margin-bottom:8px">Code sent to <b>+91 ' + esc(st.mobile) + '</b> · <a href="#" data-a="back" style="color:#A9660F">Change</a></div>';
@@ -215,6 +230,17 @@
     sheet.innerHTML = h;
     var mob = sheet.querySelector("#ckmob"); if (mob) mob.oninput = function () { st.mobile = this.value.replace(/\D/g, ""); };
     var cod = sheet.querySelector("#ckcode"); if (cod) { cod.oninput = function () { st.code = this.value.replace(/\D/g, ""); }; cod.focus(); }
+    // Typing any character into the password field swaps "Send OTP" for
+    // "Login" (and back) without a full re-render, so focus/cursor stays put.
+    var pw = sheet.querySelector("#ckpw");
+    var mainBtn = sheet.querySelector("#ckmainbtn");
+    if (pw) pw.oninput = function () {
+      st.password = this.value;
+      if (!mainBtn || st.busy) return;
+      var has = st.password.length > 0;
+      mainBtn.setAttribute("data-a", has ? "pwlogin" : "send");
+      mainBtn.textContent = has ? "Login →" : "Send OTP →";
+    };
   }
   function onSheetClick(e) {
     var t = e.target.closest("[data-a]"); if (!t) return; e.preventDefault();
@@ -222,6 +248,7 @@
     if (a === "closeLogin") closeLogin();
     else if (a === "send") { if ((st.mobile || "").length >= 8) sendOtp(); else { st.err = "Sahi mobile number daalein."; renderLogin(); } }
     else if (a === "verify") verify();
+    else if (a === "pwlogin") { if ((st.mobile || "").length >= 8 && st.password) passwordLogin(); else { st.err = "Mobile number aur password dono daalein."; renderLogin(); } }
     else if (a === "back") { st.step = "mobile"; st.code = ""; st.err = ""; renderLogin(); }
   }
 
@@ -361,6 +388,11 @@
     h += '<div class="ckrow"><select class="ckinp" id="pm">' + opts(mm, cm, "MM") + '</select><select class="ckinp" id="pd">' + opts(dd, cd, "DD") + '</select><select class="ckinp" id="py">' + opts(yy, cy, "YYYY") + "</select></div>";
     if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
     h += '<button class="ckbtn" style="background:#E0952A;color:#431016;margin-top:16px" data-a="savep">Save Profile</button>';
+    h += '<div class="cklbl" style="margin-top:18px">Password</div>';
+    h += '<div class="cksub" style="margin:0 0 8px">Set kar lo to jab kabhi OTP na aaye, isi se login ho sakega.</div>';
+    h += '<input class="ckinp" id="ppw" type="password" placeholder="Naya password">';
+    if (st.pwMsg) h += '<div style="color:#2e7d32;font-size:13px;margin-top:6px">' + esc(st.pwMsg) + "</div>";
+    h += '<button class="ckbtn" style="background:#fff;color:#5E1B22;border:1px solid #E7D9BF;margin-top:10px" data-a="savepw">Save Password</button>';
     h += '<button class="ckbtn" style="background:#fff;color:#b3261e;border:1px solid #e6a9a9;margin-top:10px" data-a="logout">Logout</button></div>';
     return h;
   }
@@ -374,6 +406,7 @@
     else if (a === "editprofile") { st.view = "edit"; renderSms(); }
     else if (a === "logout") logout();
     else if (a === "savep") saveProfileForm();
+    else if (a === "savepw") savePasswordForm();
   }
   async function saveProfileForm() {
     var g = function (id) { var e = smsBox.querySelector("#" + id); return e ? e.value : ""; };
@@ -385,6 +418,18 @@
       var d = await r.json();
       if (!r.ok) { st.err = d.error || "Save failed."; renderSms(); return; }
       await refreshMe(); st.view = "messages"; renderSms();
+    } catch (e) { st.err = "Network error."; renderSms(); }
+  }
+  async function savePasswordForm() {
+    var g = function (id) { var e = smsBox.querySelector("#" + id); return e ? e.value : ""; };
+    var pw = g("ppw");
+    st.err = ""; st.pwMsg = "";
+    if (pw.length < 4) { st.err = "Password kam se kam 4 characters ka ho."; renderSms(); return; }
+    try {
+      var r = await fetch(API.setpw, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ password: pw }) });
+      var d = await r.json();
+      if (!r.ok) { st.err = d.error || "Save failed."; renderSms(); return; }
+      st.pwMsg = "Password set ho gaya."; renderSms();
     } catch (e) { st.err = "Network error."; renderSms(); }
   }
 
@@ -450,8 +495,8 @@
     if (a === "push") { askPush(); return; }
     if (a === "install") { doInstall(); return; }
     closeSiteMenu();
-    if (a === "dologin") { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; openLogin(); } }
-    else if (a === "sms") { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; openLogin(); } }
+    if (a === "dologin") { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; st.password = ""; openLogin(); } }
+    else if (a === "sms") { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; st.password = ""; openLogin(); } }
     else if (a === "editprofile") { if (st.loggedIn) showSms("edit"); else openLogin(); }
     else if (a === "logout") logout();
     else if (a === "rate") window.open(RATE_URL, "_blank");
@@ -518,7 +563,7 @@
     });
   }
 
-  function fabClick() { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; openLogin(); } }
+  function fabClick() { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; st.password = ""; openLogin(); } }
 
   function boot() {
     var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);

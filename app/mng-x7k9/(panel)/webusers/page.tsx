@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { hasDatabase, query } from "@/lib/db";
 import { SetupNotice } from "@/components/ui";
+import GuestPasswordButton from "@/components/GuestPasswordButton";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Web Users · Checkin Admin" };
@@ -21,6 +22,7 @@ type UserRow = {
   dob: string | null;
   created_at: Date;
   last_login_at: Date | null;
+  has_password: boolean;
 };
 
 function fmt(v: Date | string | null) {
@@ -52,7 +54,8 @@ export default async function WebUsersPage() {
        FROM otp_codes ORDER BY created_at DESC LIMIT 100`
     );
     users = await query<UserRow>(
-      `SELECT mobile, name, email, dob, created_at, last_login_at
+      `SELECT mobile, name, email, dob, created_at, last_login_at,
+              (password_hash IS NOT NULL) AS has_password
        FROM app_users ORDER BY last_login_at DESC NULLS LAST, created_at DESC LIMIT 300`
     );
   } catch {
@@ -132,7 +135,7 @@ export default async function WebUsersPage() {
         <p className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">
           Logged-in numbers ({users.length})
         </p>
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Mobile</th>
@@ -140,12 +143,13 @@ export default async function WebUsersPage() {
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">DOB</th>
               <th className="px-4 py-3">Last login</th>
+              <th className="px-4 py-3">Password</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                   Abhi koi web user nahi.
                 </td>
               </tr>
@@ -157,6 +161,9 @@ export default async function WebUsersPage() {
                   <td className="px-4 py-3 text-slate-500">{u.email || "—"}</td>
                   <td className="px-4 py-3 text-slate-500">{u.dob || "—"}</td>
                   <td className="px-4 py-3 text-slate-500">{fmt(u.last_login_at)}</td>
+                  <td className="px-4 py-3">
+                    <GuestPasswordButton mobile={u.mobile} hasPassword={u.has_password} />
+                  </td>
                 </tr>
               ))
             )}

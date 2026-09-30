@@ -39,6 +39,8 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS first_name TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_name TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS dob TEXT;
+-- Optional password login, as a fallback when OTP delivery isn't available.
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 CREATE TABLE IF NOT EXISTS otp_codes (
   id         BIGSERIAL PRIMARY KEY,
