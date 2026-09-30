@@ -11,6 +11,7 @@
     "gen:admin": "node scripts/gen-admin.mjs"
   },
   "dependencies": {
+    "@netlify/database": "^2.0.1",
     "firebase": "^12.18.0",
     "jose": "^5.9.6",
     "next": "^15.5.4",

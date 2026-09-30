@@ -3,12 +3,18 @@ import { Pool } from "pg";
 // Cache the pool across hot reloads / warm serverless invocations.
 const globalForDb = globalThis as unknown as { pool?: Pool };
 
+// DATABASE_URL on Vercel/Neon-marketplace; NETLIFY_DB_URL is what Netlify's
+// own Postgres extension (@netlify/database) auto-provisions on deploy.
+function connectionString() {
+  return process.env.DATABASE_URL || process.env.NETLIFY_DB_URL;
+}
+
 export function hasDatabase() {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(connectionString());
 }
 
 export function getPool(): Pool {
-  const url = process.env.DATABASE_URL;
+  const url = connectionString();
   if (!url) throw new Error("DATABASE_URL is not set");
 
   if (!globalForDb.pool) {
