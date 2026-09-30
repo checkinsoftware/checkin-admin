@@ -41,19 +41,22 @@
     "#ck-bar.on{display:flex}" +
     "#ck-bar button{flex:1;border:1px solid #E7D9BF;background:#FBF4E8;color:#5E1B22;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer}" +
     "#ck-bar button.pri{background:#5E1B22;color:#FBF4E8;border-color:#5E1B22}" +
-    "#ck-sms .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}" +
-    "#ck-sms .ttl{font:700 1.2rem 'Fraunces',Georgia,serif;color:#5E1B22;display:inline}" +
-    "#ck-sms .num{font-size:.82rem;color:#7C6A55;font-weight:600}" +
-    "#ck-sms .filt{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}" +
+    // Total + date-filter stick together at the top of the message list so
+    // they stay visible while the guest scrolls through SMS.
+    "#ck-sms .sticktop{position:sticky;top:var(--ck-hh,0px);z-index:5;background:#FBF4E8;margin:0 -16px;padding:16px 16px 0;transition:box-shadow .2s,border-color .2s;border-bottom:1px solid transparent}" +
+    "body.ck-stuck #ck-sms .sticktop{border-bottom-color:#E7D9BF;box-shadow:0 4px 12px rgba(94,27,34,.08)}" +
+    "#ck-sms .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}" +
+    "#ck-sms .ttl{font-size:.82rem;font-weight:700;color:#5E1B22}" +
+    "#ck-sms .ttl .ttldate{font-weight:600;color:#A9660F}" +
+    "#ck-sms .num{display:inline-flex;align-items:center;gap:5px;background:#FBF0DC;border:1px solid #E7D9BF;border-radius:999px;padding:4px 11px;font-size:.72rem;color:#5E1B22;font-weight:700;white-space:nowrap}" +
+    "#ck-sms .num:before{content:'📱'}" +
+    "#ck-sms .filt{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}" +
     "#ck-sms .dt{flex:1;min-width:150px;border:1px solid #E7D9BF;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#2C231B;outline:none}" +
     "#ck-sms .rf{width:46px;height:46px;flex:none;border:none;border-radius:12px;background:#E0952A;color:#431016;font-size:18px;cursor:pointer}" +
-    "#ck-sms .total{font-size:1.5rem;font-weight:800;color:#5E1B22}" +
-    "#ck-sms .clr{border:none;background:none;color:#A9660F;font-size:.85rem;font-weight:700;cursor:pointer;padding:2px 0}" +
-    "#ck-sms .cap{display:flex;justify-content:space-between;align-items:baseline;margin:8px 2px 12px;color:#7C6A55;font-size:.9rem}" +
-    "#ck-sms .cap b{font-size:1.05rem;color:#2C231B}" +
-    "#ck-sms .card{background:#fff;border:1px solid #ecdfc6;border-radius:12px;padding:12px 13px;margin-bottom:9px;transition:box-shadow .3s,border-color .3s,background .3s}" +
-    "#ck-sms .card p{margin:0;font-size:.95rem;color:#431016;line-height:1.5}" +
-    "#ck-sms .card small{display:block;margin-top:6px;color:#a08a6e;font-size:.78rem}" +
+    "#ck-sms .clr{border:none;background:none;color:#A9660F;font-size:.85rem;font-weight:700;cursor:pointer;padding:2px 0 10px}" +
+    "#ck-sms .card{background:#fff;border:1px solid #ecdfc6;border-radius:10px;padding:9px 11px;margin-bottom:7px;transition:box-shadow .3s,border-color .3s,background .3s}" +
+    "#ck-sms .card p{margin:0;font-size:.86rem;color:#431016;line-height:1.4}" +
+    "#ck-sms .card small{display:block;margin-top:4px;color:#a08a6e;font-size:.72rem}" +
     "#ck-sms .card.hl{background:#FFF7E6;border:2px solid #E0952A;box-shadow:0 0 0 3px rgba(224,149,42,.18)}" +
     "#ck-sms .card .nb{display:inline-block;background:#E0952A;color:#431016;font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}" +
     "#ck-sms .empty{text-align:center;color:#a08a6e;padding:40px 0}" +
@@ -102,8 +105,9 @@
     "#ck-wel .acts{padding:8px 18px 22px}" +
     "#ck-wel .allow{width:100%;background:#E0952A;color:#431016;border:none;border-radius:12px;padding:15px;font-size:1rem;font-weight:800;cursor:pointer}" +
     "#ck-wel .skip{width:100%;background:none;color:#7C6A55;border:none;padding:12px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:2px}" +
-    "body.ck-sms-mode footer{padding-top:26px;padding-bottom:26px}" +
-    "body.ck-sms-mode footer .wrap>*+*{margin-top:10px}";
+    // Hide the marketing footer entirely on the SMS page so the message list
+    // isn't fighting it for space — this isn't the marketing site anymore.
+    "body.ck-sms-mode footer{display:none}";
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function fmt(v) { var d = new Date(v); if (isNaN(d)) return ""; return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
@@ -228,6 +232,8 @@
       h += '<button class="ckbtn" data-a="verify"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? "Verifying…" : "Verify & continue") + "</button>";
     }
     sheet.innerHTML = h;
+    // Enter key submits, same as tapping the main button for that step.
+    function onEnter(el, btn) { if (el) el.addEventListener("keydown", function (e) { if (e.key === "Enter" && btn) { e.preventDefault(); btn.click(); } }); }
     var mob = sheet.querySelector("#ckmob"); if (mob) mob.oninput = function () { st.mobile = this.value.replace(/\D/g, ""); };
     var cod = sheet.querySelector("#ckcode"); if (cod) { cod.oninput = function () { st.code = this.value.replace(/\D/g, ""); }; cod.focus(); }
     // Typing any character into the password field swaps "Send OTP" for
@@ -241,6 +247,9 @@
       mainBtn.setAttribute("data-a", has ? "pwlogin" : "send");
       mainBtn.textContent = has ? "Login →" : "Send OTP →";
     };
+    onEnter(mob, mainBtn);
+    onEnter(pw, mainBtn);
+    onEnter(cod, sheet.querySelector('[data-a="verify"]'));
   }
   function onSheetClick(e) {
     var t = e.target.closest("[data-a]"); if (!t) return; e.preventDefault();
@@ -357,12 +366,15 @@
     }
   }
   function mob10() { return (st.mobile || "").replace(/^\+?91/, ""); }
+  function dateLabel(v) { var d = new Date(v); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); }
   function pageHtml() {
-    var h = '<div class="top"><div><span class="ttl">My SMS Notifications</span></div><span class="num">+91 ' + esc(mob10()) + '</span></div>';
+    var count = st.date ? st.messages.length : st.total;
+    var dateSuffix = st.date ? ' <span class="ttldate">· ' + esc(dateLabel(st.date)) + "</span>" : "";
+    var h = '<div class="sticktop">';
+    h += '<div class="top"><span class="ttl">Total SMS - ' + count + dateSuffix + '</span><span class="num">+91 ' + esc(mob10()) + "</span></div>";
     h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><button class="rf" data-a="refresh" title="Refresh">⟳</button></div>';
-    h += '<div class="total">Total SMS - ' + st.total + "</div>";
     if (st.date) h += '<button class="clr" data-a="clear">Clear Filters</button>';
-    h += '<div class="cap"><b>' + (st.date ? "Filtered" : "All SMS") + "</b><span>" + st.messages.length + " messages</span></div>";
+    h += "</div>";
     if (!st.messages.length) h += '<div class="empty">Koi SMS nahi mila.' + (st.date ? " (is date par)" : "") + "</div>";
     st.messages.forEach(function (m) {
       var isHl = st.hl && String(m.id) === String(st.hl);
@@ -565,8 +577,24 @@
 
   function fabClick() { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; st.password = ""; openLogin(); } }
 
+  // The site's own <header> is position:sticky and its height varies (nav
+  // wraps at some widths), so the SMS page's sticky Total/date bar needs to
+  // sit right below it, not underneath it — track that height in a CSS var.
+  function syncHeaderH() {
+    var h = document.querySelector("header");
+    try { document.documentElement.style.setProperty("--ck-hh", (h ? h.offsetHeight : 0) + "px"); } catch (e) {}
+  }
+
   function boot() {
     var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
+    syncHeaderH();
+    window.addEventListener("load", syncHeaderH);
+    window.addEventListener("resize", syncHeaderH);
+    // Shadow/border on the sticky Total bar once the page has scrolled under it.
+    window.addEventListener("scroll", function () {
+      if (!document.body.classList.contains("ck-sms-mode")) return;
+      document.body.classList.toggle("ck-stuck", window.scrollY > 30);
+    }, { passive: true });
     // Capture the install prompt so the drawer can offer "Add to Home Screen".
     window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); });
     window.addEventListener("appinstalled", function () { st.installPrompt = null; injectMenu(); });
