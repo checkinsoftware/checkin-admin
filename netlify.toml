@@ -1,0 +1,14 @@
+# Next.js's own rewrites() in next.config.ts (mapping /sms and /welcome to
+# /index.html) aren't honored by Netlify's Next.js runtime the way Vercel
+# honors them -- only the root "/" rewrite came through, /sms and /welcome
+# 404'd. These redirects reproduce the same routing at Netlify's edge,
+# ahead of the Next.js runtime.
+[[redirects]]
+  from = "/sms"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/welcome"
+  to = "/index.html"
+  status = 200
