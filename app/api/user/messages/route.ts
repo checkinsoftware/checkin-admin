@@ -21,8 +21,12 @@ export async function GET(req: Request) {
   let total = 0;
   if (hasDatabase()) {
     try {
+      // Guests and their dates are India-only, so "today" means the IST
+      // calendar day -- comparing straight against $2::date would use the
+      // DB's own (UTC) timezone and quietly drop anything sent between
+      // midnight and 5:30am IST, which is still UTC "yesterday".
       const where = date
-        ? `recipient = $1 AND created_at >= $2::date AND created_at < ($2::date + INTERVAL '1 day')`
+        ? `recipient = $1 AND created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Kolkata') AND created_at < (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Kolkata')`
         : `recipient = $1`;
       const params = date ? [session.mobile, date] : [session.mobile];
       messages = await query(

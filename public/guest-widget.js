@@ -176,7 +176,14 @@
   }
   function openSmsHighlight(ts) {
     st.hl = ts; st.view = "messages";
-    if (document.body.classList.contains("ck-sms-mode")) renderSms(); else showSms("messages");
+    // Same reasoning as the ?hl= cold-start path: always re-fetch unfiltered
+    // so the message being jumped to is guaranteed to be in the list.
+    if (st.date) {
+      st.date = "";
+      refreshMe().then(function () {
+        if (document.body.classList.contains("ck-sms-mode")) renderSms(); else showSms("messages");
+      });
+    } else if (document.body.classList.contains("ck-sms-mode")) renderSms(); else showSms("messages");
   }
   function startPolling() {
     clearInterval(st.pollTimer);
@@ -659,6 +666,11 @@
     }
     // JS now controls home visibility via marketMain.hidden — drop the first-paint guard.
     try { document.documentElement.classList.remove("ck-sms-boot"); } catch (e) {}
+    // A notification/deep-link (?hl=) must always find its message, even if
+    // it landed just past local midnight and today's date-filter (server
+    // side, not timezone-aware) would otherwise exclude it — so the very
+    // first fetch on a /sms?hl=... load goes out unfiltered.
+    try { if (new URL(location.href).searchParams.get("hl")) st.date = ""; } catch (e) {}
     refreshMe().then(function () {
       var skipped = false; try { skipped = sessionStorage.getItem("ck_skip") === "1"; } catch (e) {}
       // Deep-link from a notification: /sms?hl=<created_at> highlights that SMS.

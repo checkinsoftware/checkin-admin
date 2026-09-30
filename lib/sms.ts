@@ -75,13 +75,15 @@ function buildWhere(f: SmsFilters) {
     params.push(`%${f.tag}%`);
     clauses.push(`message ILIKE $${params.length}`);
   }
+  // IST calendar days, not the DB's own (UTC) day -- see app/api/user/messages
+  // for why the plain ::date comparison silently misses the early-morning window.
   if (f.from) {
     params.push(f.from);
-    clauses.push(`created_at >= $${params.length}::date`);
+    clauses.push(`created_at >= ($${params.length}::date::timestamp AT TIME ZONE 'Asia/Kolkata')`);
   }
   if (f.to) {
     params.push(f.to);
-    clauses.push(`created_at < ($${params.length}::date + INTERVAL '1 day')`);
+    clauses.push(`created_at < (($${params.length}::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Kolkata')`);
   }
 
   return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", params };
