@@ -24,8 +24,8 @@ if (config.projectId) {
     const url = d.url || (d.smsId ? "/sms?hl=" + encodeURIComponent(d.smsId) : "/sms");
     self.registration.showNotification(title, {
       body,
-      icon: "/images/logo2.jpg",
-      badge: "/images/logo2.jpg",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       data: { url },
     });
   });

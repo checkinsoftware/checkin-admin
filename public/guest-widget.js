@@ -170,7 +170,7 @@
     if (st.fcmOn) return; // avoid a double notification when FCM is active
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
     try {
-      var n = new Notification("CHECKIN", { body: (m.message || "").slice(0, 120), tag: "ck-sms-" + m.id, icon: "/images/logo2.jpg" });
+      var n = new Notification("CHECKIN", { body: (m.message || "").slice(0, 120), tag: "ck-sms-" + m.id, icon: "/icon-192.png" });
       n.onclick = function () { try { window.focus(); } catch (e) {} openSmsHighlight(m.id); n.close(); };
     } catch (e) {}
   }
@@ -504,7 +504,7 @@
           var note = (payload && payload.notification) || {};
           if (document.hidden && typeof Notification !== "undefined" && Notification.permission === "granted") {
             try {
-              var n = new Notification(note.title || "CHECKIN", { body: note.body || "", tag: "ck-sms-" + (d.smsId || ""), icon: "/images/logo2.jpg" });
+              var n = new Notification(note.title || "CHECKIN", { body: note.body || "", tag: "ck-sms-" + (d.smsId || ""), icon: "/icon-192.png" });
               n.onclick = function () { try { window.focus(); } catch (e) {} if (d.smsId) openSmsHighlight(d.smsId); n.close(); };
             } catch (e) {}
           } else if (d.smsId) {
