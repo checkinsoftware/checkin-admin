@@ -10,7 +10,6 @@
   function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   // Defaults to today's SMS — "Clear Filters" drops this to show every message ever.
   var st = { loggedIn: false, mobile: "", name: "", total: 0, messages: [], date: todayStr(), step: "mobile", code: "", password: "", dev: null, skip: false, busy: false, err: "", view: "messages", profile: {} };
-  var RATE_URL = "https://www.google.com/search?q=Hotel+Arco+Palace+Jaipur+review";
 
   var css =
     "#ckfab{position:fixed;right:16px;bottom:16px;z-index:900;background:#5E1B22;color:#FBF4E8;border:1.5px solid #E0952A;border-radius:999px;padding:12px 20px;font:700 15px 'Figtree',system-ui,-apple-system,Segoe UI,sans-serif;box-shadow:0 10px 26px rgba(67,16,22,.4);cursor:pointer}" +
@@ -538,7 +537,6 @@
     else if (a === "sms") { if (st.loggedIn) showSms("messages"); else { st.step = "mobile"; st.password = ""; openLogin(); } }
     else if (a === "editprofile") { if (st.loggedIn) showSms("edit"); else openLogin(); }
     else if (a === "logout") logout();
-    else if (a === "rate") window.open(RATE_URL, "_blank");
   }
   function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent || ""); }
   function isStandalone() {
@@ -612,7 +610,7 @@
     // Menu list items (Edit Profile is now the top profile block).
     Array.prototype.slice.call(ul.querySelectorAll("li.ck-li")).forEach(function (x) { x.remove(); });
     var items = st.loggedIn
-      ? [{ t: "My SMS Notifications", a: "sms", sw: "on" }, { t: "Push Notification", a: "push", sw: st.push ? "on" : "" }, { t: "Rate on Google", a: "rate" }, { t: "Logout", a: "logout" }]
+      ? [{ t: "My SMS Notifications", a: "sms" }, { t: "Push Notification", a: "push", sw: st.push ? "on" : "" }, { t: "Logout", a: "logout" }]
       : [{ t: "My SMS / Login", a: "dologin" }];
     // Add-to-Home / Install — only when the app can be installed and isn't already.
     if (!isStandalone() && (st.installPrompt || isIOS())) {
