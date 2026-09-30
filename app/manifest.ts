@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Checkin — My Messages",
     short_name: "Checkin",
-    description: "Apne hotel messages aur alerts mobile number se dekhein.",
+    description: "View your hotel messages and alerts by mobile number.",
     start_url: "/",
     scope: "/",
     display: "standalone",

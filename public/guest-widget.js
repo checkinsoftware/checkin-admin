@@ -242,18 +242,18 @@
 
   function renderLogin() {
     var h = '<div class="ckgrip"></div>';
-    h += '<div class="ckban"><button class="ckx" data-a="closeLogin">✕</button><div class="ckbanrow"><div class="ckbadge">🔔</div><div><div style="font-weight:700">Login Now</div><div style="font-size:12px;opacity:.92">Login karke apne hotel messages &amp; alerts turant paayein ✨</div></div></div></div>';
-    h += '<div class="ckh">Login with Mobile</div><div class="cksub">Hum aapke number par OTP bhejenge.</div>';
+    h += '<div class="ckban"><button class="ckx" data-a="closeLogin">✕</button><div class="ckbanrow"><div class="ckbadge">🔔</div><div><div style="font-weight:700">Login Now</div><div style="font-size:12px;opacity:.92">Log in to get your hotel messages &amp; alerts instantly ✨</div></div></div></div>';
+    h += '<div class="ckh">Login with Mobile</div><div class="cksub">We\'ll send an OTP to your number.</div>';
     if (st.step === "mobile") {
       var pwMode = !!(st.password && st.password.length);
       h += '<div class="ckrow"><span class="ckpre">🇮🇳 +91</span><input class="ckinp" id="ckmob" inputmode="numeric" maxlength="10" placeholder="Enter mobile number" value="' + esc(st.mobile) + '"></div>';
-      h += '<input class="ckinp" id="ckpw" type="password" placeholder="Password (agar set ho) — optional" style="margin-top:8px" value="' + esc(st.password || "") + '">';
+      h += '<input class="ckinp" id="ckpw" type="password" placeholder="Password (if set) — optional" style="margin-top:8px" value="' + esc(st.password || "") + '">';
       if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
       h += '<button class="ckbtn" id="ckmainbtn" data-a="' + (pwMode ? "pwlogin" : "send") + '"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? (pwMode ? "Logging in…" : "Sending…") : (pwMode ? "Login →" : "Send OTP →")) + "</button>";
       h += '<button class="ckskip" data-a="closeLogin">Skip for now</button>';
     } else {
       h += '<div class="cksub" style="margin-bottom:8px">Code sent to <b>+91 ' + esc(st.mobile) + '</b> · <a href="#" data-a="back" style="color:#A9660F">Change</a></div>';
-      if (st.skip) h += '<div class="ckinfo">SMS abhi connect nahi hai — koi bhi code chalega.' + (st.dev ? " Aapka code: <b>" + esc(st.dev) + "</b>" : "") + "</div>";
+      if (st.skip) h += '<div class="ckinfo">SMS isn\'t connected yet — any code will work.' + (st.dev ? " Your code: <b>" + esc(st.dev) + "</b>" : "") + "</div>";
       h += '<input class="ckinp" id="ckcode" style="text-align:center;letter-spacing:.4em" inputmode="numeric" maxlength="6" placeholder="••••••" value="' + esc(st.code || "") + '">';
       if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
       h += '<button class="ckbtn" data-a="verify"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? "Verifying…" : "Verify & continue") + "</button>";
@@ -282,9 +282,9 @@
     var t = e.target.closest("[data-a]"); if (!t) return; e.preventDefault();
     var a = t.getAttribute("data-a");
     if (a === "closeLogin") closeLogin();
-    else if (a === "send") { if ((st.mobile || "").length >= 8) sendOtp(); else { st.err = "Sahi mobile number daalein."; renderLogin(); } }
+    else if (a === "send") { if ((st.mobile || "").length >= 8) sendOtp(); else { st.err = "Enter a valid mobile number."; renderLogin(); } }
     else if (a === "verify") verify();
-    else if (a === "pwlogin") { if ((st.mobile || "").length >= 8 && st.password) passwordLogin(); else { st.err = "Mobile number aur password dono daalein."; renderLogin(); } }
+    else if (a === "pwlogin") { if ((st.mobile || "").length >= 8 && st.password) passwordLogin(); else { st.err = "Enter both mobile number and password."; renderLogin(); } }
     else if (a === "back") { st.step = "mobile"; st.code = ""; st.err = ""; renderLogin(); }
   }
 
@@ -340,7 +340,7 @@
           '<div class="mob">📱 Logged in as <b>+91 ' + esc(mob10()) + "</b></div>" +
           (st.welOtp ? '<div class="otp">🔐 OTP <b>' + esc(st.welOtp) + "</b></div>" : "") +
         "</div>" +
-        '<div class="body"><div class="lead">Aapko in sab ka notification milega:</div>' + li + "</div>" +
+        '<div class="body"><div class="lead">You\'ll get notified about all of these:</div>' + li + "</div>" +
         '<div class="acts">' +
           '<button class="allow" data-a="allow">🔔 Allow Notifications</button>' +
           '<button class="skip" data-a="skip">Skip for now</button>' +
@@ -354,7 +354,7 @@
     if (a === "allow") { askPush().then(welToSms, welToSms); }
     else if (a === "skip") {
       var acts = welBox && welBox.querySelector(".acts");
-      if (acts) acts.innerHTML = '<div class="skipmsg">Aapne skip kar diya hai — ab is number par koi notification nahi aayega.</div>';
+      if (acts) acts.innerHTML = '<div class="skipmsg">You\'ve skipped — this number won\'t get notifications now.</div>';
       setTimeout(welToSms, 1500);
     }
   }
@@ -403,7 +403,7 @@
     h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><button class="rf" data-a="refresh" title="Refresh">⟳</button></div>';
     if (st.date) h += '<button class="clr" data-a="clear">Clear Filters</button>';
     h += "</div>";
-    if (!st.messages.length) h += '<div class="empty">Koi SMS nahi mila.' + (st.date ? " (is date par)" : "") + "</div>";
+    if (!st.messages.length) h += '<div class="empty">No SMS found.' + (st.date ? " (for this date)" : "") + "</div>";
     st.messages.forEach(function (m) {
       var isHl = st.hl && String(m.id) === String(st.hl);
       h += '<div class="card' + (isHl ? " hl" : "") + '" data-id="' + esc(String(m.id || "")) + '">' + (isHl ? '<span class="nb">New</span>' : "") + "<p>" + esc(m.message) + "</p><small>" + esc(fmt(m.created_at)) + "</small></div>";
@@ -429,8 +429,8 @@
     if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
     h += '<button class="ckbtn" style="background:#E0952A;color:#431016;margin-top:16px" data-a="savep">Save Profile</button>';
     h += '<div class="cklbl" style="margin-top:18px">Password</div>';
-    h += '<div class="cksub" style="margin:0 0 8px">Set kar lo to jab kabhi OTP na aaye, isi se login ho sakega.</div>';
-    h += '<input class="ckinp" id="ppw" type="password" placeholder="Naya password">';
+    h += '<div class="cksub" style="margin:0 0 8px">Set one so you can log in with it whenever OTP isn\'t available.</div>';
+    h += '<input class="ckinp" id="ppw" type="password" placeholder="New password">';
     if (st.pwMsg) h += '<div style="color:#2e7d32;font-size:13px;margin-top:6px">' + esc(st.pwMsg) + "</div>";
     h += '<button class="ckbtn" style="background:#fff;color:#5E1B22;border:1px solid #E7D9BF;margin-top:10px" data-a="savepw">Save Password</button>';
     h += '<button class="ckbtn" style="background:#fff;color:#b3261e;border:1px solid #e6a9a9;margin-top:10px" data-a="logout">Logout</button></div>';
@@ -464,12 +464,12 @@
     var g = function (id) { var e = smsBox.querySelector("#" + id); return e ? e.value : ""; };
     var pw = g("ppw");
     st.err = ""; st.pwMsg = "";
-    if (pw.length < 4) { st.err = "Password kam se kam 4 characters ka ho."; renderSms(); return; }
+    if (pw.length < 4) { st.err = "Password must be at least 4 characters."; renderSms(); return; }
     try {
       var r = await fetch(API.setpw, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ password: pw }) });
       var d = await r.json();
       if (!r.ok) { st.err = d.error || "Save failed."; renderSms(); return; }
-      st.pwMsg = "Password set ho gaya."; renderSms();
+      st.pwMsg = "Password saved."; renderSms();
     } catch (e) { st.err = "Network error."; renderSms(); }
   }
 
@@ -488,7 +488,7 @@
   // arrive even when Chrome is closed. Falls back to in-page notifications when
   // Firebase isn't configured or the browser can't do push.
   async function askPush() {
-    if (typeof Notification === "undefined") { alert("Is browser me notifications support nahi."); return; }
+    if (typeof Notification === "undefined") { alert("Notifications aren't supported in this browser."); return; }
     var cfg = null;
     try { cfg = await (await fetch(API.pushCfg, { credentials: "same-origin" })).json(); } catch (e) {}
 
@@ -496,7 +496,7 @@
     if (perm !== "granted") { try { perm = await Notification.requestPermission(); } catch (e) {} }
     if (perm !== "granted") {
       st.push = false; injectMenu();
-      if (perm === "denied") alert("Notifications block hain. Address bar ke lock icon → Permissions → Notifications → Allow karke reload karein.");
+      if (perm === "denied") alert("Notifications are blocked. Open the lock icon in the address bar → Permissions → Notifications → Allow, then reload.");
       return;
     }
     st.push = true; injectMenu();
@@ -552,9 +552,9 @@
       try { st.installPrompt.prompt(); await st.installPrompt.userChoice; } catch (e) {}
       st.installPrompt = null; injectMenu();
     } else if (isIOS()) {
-      alert("iPhone par install karne ke liye: Safari me neeche Share button (⬆️) dabayein → 'Add to Home Screen' chunein.");
+      alert("To install on iPhone: tap the Share button (⬆️) in Safari, then choose 'Add to Home Screen'.");
     } else {
-      alert("Is browser ke menu (⋮) me 'Install app' ya 'Add to Home screen' option se install karein.");
+      alert("Use 'Install app' or 'Add to Home screen' from this browser's menu (⋮) to install.");
     }
   }
   var installBox;
@@ -564,8 +564,8 @@
     if (!st.installPrompt && !isIOS()) return; // no install path available on this browser
     if (!installBox) {
       installBox = elem(
-        '<div id="ck-install"><img src="/icon-192.png" alt=""><div class="txt"><b>CHECKIN install karein</b><span>' +
-          (isIOS() ? "Share ⬆️ → Add to Home Screen" : "Home screen se seedha messages dekhein") +
+        '<div id="ck-install"><img src="/icon-192.png" alt=""><div class="txt"><b>Install CHECKIN</b><span>' +
+          (isIOS() ? "Share ⬆️ → Add to Home Screen" : "View messages right from your home screen") +
           '</span></div><div class="btns">' +
           (isIOS() ? "" : '<button class="go" data-a="go">Install</button>') +
           '<button class="x" data-a="x">✕</button></div></div>'
