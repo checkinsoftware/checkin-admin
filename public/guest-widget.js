@@ -7,7 +7,9 @@
   window.__ckGuest = true;
 
   var API = { me: "/api/user/messages", send: "/api/user/otp/send", verify: "/api/user/otp/verify", pwlogin: "/api/user/password/login", setpw: "/api/user/password", logout: "/api/user/logout", pushCfg: "/api/push/config", device: "/api/user/device" };
-  var st = { loggedIn: false, mobile: "", name: "", total: 0, messages: [], date: "", step: "mobile", code: "", password: "", dev: null, skip: false, busy: false, err: "", view: "messages", profile: {} };
+  function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  // Defaults to today's SMS — "Clear Filters" drops this to show every message ever.
+  var st = { loggedIn: false, mobile: "", name: "", total: 0, messages: [], date: todayStr(), step: "mobile", code: "", password: "", dev: null, skip: false, busy: false, err: "", view: "messages", profile: {} };
   var RATE_URL = "https://www.google.com/search?q=Hotel+Arco+Palace+Jaipur+review";
 
   var css =
@@ -36,14 +38,14 @@
     ".ckinfo{background:#FBF4E8;color:#7a4d0a;border:1px solid #F1CB86;border-radius:10px;padding:8px 12px;font-size:14px;margin-top:10px}" +
     ".cklbl{font-size:13px;font-weight:700;color:#5E1B22;margin:14px 2px 6px}" +
     /* in-page SMS section */
-    "#ck-sms{max-width:760px;margin:0 auto;padding:16px 16px 84px;min-height:60vh}" +
+    "#ck-sms{max-width:760px;margin:0 auto;padding:0 16px 84px;min-height:60vh}" +
     "#ck-bar{position:fixed;bottom:0;left:0;right:0;z-index:800;display:none;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E7D9BF;box-shadow:0 -4px 16px rgba(67,16,22,.08)}" +
     "#ck-bar.on{display:flex}" +
     "#ck-bar button{flex:1;border:1px solid #E7D9BF;background:#FBF4E8;color:#5E1B22;border-radius:12px;padding:11px;font-weight:700;font-size:.92rem;cursor:pointer}" +
     "#ck-bar button.pri{background:#5E1B22;color:#FBF4E8;border-color:#5E1B22}" +
     // Total + date-filter stick together at the top of the message list so
     // they stay visible while the guest scrolls through SMS.
-    "#ck-sms .sticktop{position:sticky;top:var(--ck-hh,0px);z-index:5;background:#FBF4E8;margin:0 -16px;padding:16px 16px 0;transition:box-shadow .2s,border-color .2s;border-bottom:1px solid transparent}" +
+    "#ck-sms .sticktop{position:sticky;top:var(--ck-hh,0px);z-index:5;background:#FBF4E8;margin:0 -16px;padding:10px 16px 0;transition:box-shadow .2s,border-color .2s;border-bottom:1px solid transparent}" +
     "body.ck-stuck #ck-sms .sticktop{border-bottom-color:#E7D9BF;box-shadow:0 4px 12px rgba(94,27,34,.08)}" +
     "#ck-sms .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}" +
     "#ck-sms .ttl{font-size:.82rem;font-weight:700;color:#5E1B22}" +
@@ -107,7 +109,15 @@
     "#ck-wel .skip{width:100%;background:none;color:#7C6A55;border:none;padding:12px;font-size:.9rem;font-weight:600;cursor:pointer;margin-top:2px}" +
     // Hide the marketing footer entirely on the SMS page so the message list
     // isn't fighting it for space — this isn't the marketing site anymore.
-    "body.ck-sms-mode footer{display:none}";
+    "body.ck-sms-mode footer{display:none}" +
+    // Shrink the site's own sticky header on this page too — smaller logo,
+    // tighter padding, smaller call/menu buttons — so it doesn't eat the
+    // screen that used to also have the footer competing for space.
+    "body.ck-sms-mode .topbar{padding:8px 0}" +
+    "body.ck-sms-mode .brand img{height:32px}" +
+    "body.ck-sms-mode .brand .iso{font-size:.62rem}" +
+    "body.ck-sms-mode .menu-btn,body.ck-sms-mode .mcall{width:36px;height:36px;border-radius:9px}" +
+    "body.ck-sms-mode .menu-btn svg,body.ck-sms-mode .mcall svg{width:19px;height:19px}";
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function fmt(v) { var d = new Date(v); if (isNaN(d)) return ""; return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + ", " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
@@ -209,7 +219,7 @@
     if (st.fcmToken) { try { await fetch(API.device, { method: "DELETE", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ token: st.fcmToken }) }); } catch (e) {} }
     try { await fetch(API.logout, { method: "POST", credentials: "same-origin" }); } catch (e) {}
     clearInterval(st.pollTimer);
-    st.loggedIn = false; st.step = "mobile"; st.mobile = ""; st.code = ""; st.password = ""; st.date = ""; st.view = "messages"; st.lastTop = undefined; st.fcmOn = false; st.fcmToken = null;
+    st.loggedIn = false; st.step = "mobile"; st.mobile = ""; st.code = ""; st.password = ""; st.date = todayStr(); st.view = "messages"; st.lastTop = undefined; st.fcmOn = false; st.fcmToken = null;
     hideSms(); await refreshMe();
   }
 
@@ -353,6 +363,7 @@
   }
   function renderSms() {
     if (!smsBox) return;
+    syncHeaderH(); // header shrinks in ck-sms-mode; keep the sticky offset in sync
     smsBox.innerHTML = st.view === "edit" ? editHtml() : pageHtml();
     var dt = smsBox.querySelector("#cksmsdate"); if (dt) dt.onchange = function () { st.date = this.value; refreshMe().then(renderSms); };
     if (st.hl && st.view !== "edit") {
