@@ -132,7 +132,7 @@ export async function handleSmsInsert(req: Request) {
     // that the message was stored.
     const push = await pushToMobile(
       mobile,
-      "New message",
+      "CHECKIN",
       text.length > 120 ? `${text.slice(0, 117)}…` : text,
       { smsId: rows[0].id, mobile }
     );
