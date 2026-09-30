@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasDatabase, query } from "@/lib/db";
+import { absoluteUrl } from "@/lib/site-url";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request, ctx: { params: Promise<{ token: string }> }) {
   const { token } = await ctx.params;
-  const homeUrl = new URL("/sms?expired=1", req.url);
+  const homeUrl = absoluteUrl("/sms?expired=1", req);
 
   if (!token || !hasDatabase()) return NextResponse.redirect(homeUrl);
 
@@ -45,7 +46,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
     /* login must not fail on an audit write */
   }
 
-  const dest = new URL("/welcome", req.url);
+  const dest = absoluteUrl("/welcome", req);
   if (hotel) dest.searchParams.set("h", hotel);
   const res = NextResponse.redirect(dest);
   res.cookies.set(USER_COOKIE, await createUserToken(mobile), {

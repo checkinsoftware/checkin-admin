@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasDatabase, query } from "@/lib/db";
+import { absoluteUrl } from "@/lib/site-url";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
   token = decodeURIComponent(token.trim());
   const otp = u.searchParams.get("otp") || "";
 
-  const bad = new URL("/sms?expired=1", req.url);
+  const bad = absoluteUrl("/sms?expired=1", req);
   if (!token || !hasDatabase()) return NextResponse.redirect(bad);
 
   let mobile = "", hotel = "", already = false;
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
 
   // Land on the welcome page (thank-you + notification opt-in), hotel name
   // (and the vendor's display-only OTP, if it appended one) in tow.
-  const dest = new URL("/welcome", req.url);
+  const dest = absoluteUrl("/welcome", req);
   if (hotel) dest.searchParams.set("h", hotel);
   if (otp) dest.searchParams.set("otp", otp);
   if (already) dest.searchParams.set("already", "1");
