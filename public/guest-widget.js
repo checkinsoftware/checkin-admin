@@ -37,14 +37,16 @@
     ".ckinfo{background:#FBF4E8;color:#7a4d0a;border:1px solid #F1CB86;border-radius:10px;padding:8px 12px;font-size:14px;margin-top:10px}" +
     ".cklbl{font-size:13px;font-weight:700;color:#5E1B22;margin:14px 2px 6px}" +
     /* auto-shown "install this app" banner, top of page */
-    "#ck-install{position:fixed;left:10px;right:10px;top:10px;z-index:1200;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E7D9BF;border-radius:16px;padding:12px 12px 12px 14px;box-shadow:0 10px 30px rgba(67,16,22,.2);max-width:440px;margin:0 auto}" +
+    "#ck-install{position:fixed;left:10px;right:10px;top:10px;z-index:1200;display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid #E7D9BF;border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(67,16,22,.2);max-width:440px;margin:0 auto}" +
+    "#ck-install .top{display:flex;align-items:center;gap:12px}" +
     "#ck-install img{width:42px;height:42px;border-radius:11px;flex:none}" +
     "#ck-install .txt{flex:1;min-width:0}" +
     "#ck-install .txt b{display:block;font-size:.9rem;color:#5E1B22;font-weight:800}" +
     "#ck-install .txt span{display:block;font-size:.76rem;color:#7C6A55;margin-top:1px}" +
-    "#ck-install .btns{display:flex;align-items:center;gap:4px;flex:none}" +
-    "#ck-install .go{border:none;border-radius:10px;padding:9px 14px;font-weight:700;font-size:.8rem;cursor:pointer;background:#E0952A;color:#431016}" +
-    "#ck-install .x{border:none;background:none;color:#a08a6e;font-size:18px;cursor:pointer;padding:4px 6px;line-height:1}" +
+    "#ck-install .x{border:none;background:none;color:#a08a6e;font-size:18px;cursor:pointer;padding:4px 6px;line-height:1;flex:none}" +
+    "#ck-install .btns{display:flex;align-items:center;justify-content:flex-end;gap:16px}" +
+    "#ck-install .go{border:none;border-radius:10px;padding:9px 18px;font-weight:700;font-size:.82rem;cursor:pointer;background:#E0952A;color:#431016}" +
+    "#ck-install .skip{border:none;background:none;color:#7C6A55;font-size:.8rem;font-weight:600;cursor:pointer;padding:9px 2px}" +
     /* in-page SMS section */
     "#ck-sms{max-width:760px;margin:0 auto;padding:0 16px 84px;min-height:60vh}" +
     "#ck-bar{position:fixed;bottom:0;left:0;right:0;z-index:800;display:none;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E7D9BF;box-shadow:0 -4px 16px rgba(67,16,22,.08)}" +
@@ -564,11 +566,11 @@
     if (!st.installPrompt && !isIOS()) return; // no install path available on this browser
     if (!installBox) {
       installBox = elem(
-        '<div id="ck-install"><img src="/icon-192.png" alt=""><div class="txt"><b>Install CHECKIN</b><span>' +
+        '<div id="ck-install"><div class="top"><img src="/icon-192.png" alt=""><div class="txt"><b>Install Application</b><span>' +
           (isIOS() ? "Share ⬆️ → Add to Home Screen" : "View messages right from your home screen") +
-          '</span></div><div class="btns">' +
+          '</span></div><button class="x" data-a="x">✕</button></div><div class="btns">' +
           (isIOS() ? "" : '<button class="go" data-a="go">Install</button>') +
-          '<button class="x" data-a="x">✕</button></div></div>'
+          '<button class="skip" data-a="x">Skip for now</button></div></div>'
       );
       installBox.addEventListener("click", function (e) {
         var t = e.target.closest("[data-a]"); if (!t) return;
@@ -620,7 +622,7 @@
     // beforeinstallprompt engagement heuristic to even show the entry.
     if (!isStandalone()) {
       var pos = st.loggedIn ? items.length - 1 : items.length; // before Logout when present
-      items.splice(pos, 0, { t: "📲 Add to Home Screen", a: "install" });
+      items.splice(pos, 0, { t: "📲 Install Application", a: "install" });
     }
     items.forEach(function (it) {
       var li = document.createElement("li"); li.className = "ck-li";
@@ -651,13 +653,12 @@
       if (!document.body.classList.contains("ck-sms-mode")) return;
       document.body.classList.toggle("ck-stuck", window.scrollY > 30);
     }, { passive: true });
-    // Capture the install prompt so the drawer can offer "Add to Home Screen".
-    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); showInstallBanner(); });
+    // Capture the install prompt so the drawer can offer "Install Application".
+    // Only pop the floating banner for a guest who's already logged in --
+    // showInstallBanner() itself is also called right after a fresh login
+    // (see verify()/passwordLogin()) and below, once refreshMe() resolves.
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); if (st.loggedIn) showInstallBanner(); });
     window.addEventListener("appinstalled", function () { st.installPrompt = null; injectMenu(); hideInstallBanner(false); });
-    // iOS never fires beforeinstallprompt — there's no programmatic trigger,
-    // just the manual Share -> Add to Home Screen steps — so show the banner
-    // proactively there instead of waiting for an event that'll never come.
-    if (isIOS() && !isStandalone()) setTimeout(showInstallBanner, 1200);
     // Re-place the profile block (header vs drawer) when crossing the breakpoint.
     try { var mq = window.matchMedia("(min-width: 821px)"); (mq.addEventListener ? mq.addEventListener("change", injectMenu) : mq.addListener(injectMenu)); } catch (e) {}
     ov = elem('<div id="ckov"><div id="cksheet"></div></div>');
@@ -727,6 +728,7 @@
         // falls back to startPolling() itself if FCM isn't actually available.
         if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
         else startPolling();
+        setTimeout(showInstallBanner, 1200);
       }
     });
   }
