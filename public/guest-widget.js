@@ -614,8 +614,11 @@
     var items = st.loggedIn
       ? [{ t: "My SMS Notifications", a: "sms" }, { t: "Push Notification", a: "push", sw: st.push ? "on" : "" }, { t: "Logout", a: "logout" }]
       : [{ t: "My SMS / Login", a: "dologin" }];
-    // Add-to-Home / Install — only when the app can be installed and isn't already.
-    if (!isStandalone() && (st.installPrompt || isIOS())) {
+    // Add-to-Home / Install — show whenever it isn't already installed. Tapping it
+    // uses the captured prompt if Chrome has offered one yet, else falls back to
+    // manual Share/menu instructions (see doInstall) -- don't wait on the
+    // beforeinstallprompt engagement heuristic to even show the entry.
+    if (!isStandalone()) {
       var pos = st.loggedIn ? items.length - 1 : items.length; // before Logout when present
       items.splice(pos, 0, { t: "📲 Add to Home Screen", a: "install" });
     }
