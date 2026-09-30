@@ -215,6 +215,7 @@
       st.busy = false; closeLogin(); await refreshMe(); showSms("messages");
       if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
       else startPolling();
+      setTimeout(showInstallBanner, 600);
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
   // Password login — the fallback when OTP delivery isn't available. Same
@@ -228,6 +229,7 @@
       st.busy = false; st.password = ""; closeLogin(); await refreshMe(); showSms("messages");
       if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
       else startPolling();
+      setTimeout(showInstallBanner, 600);
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
   async function logout() {
