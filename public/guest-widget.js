@@ -38,6 +38,9 @@
     ".cklbl{font-size:13px;font-weight:700;color:#5E1B22;margin:14px 2px 6px}" +
     /* auto-shown "install this app" banner, top of page */
     "#ck-install{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(20,6,8,.62)}" +
+    "#ck-upd{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1500;display:flex;align-items:center;gap:9px;background:#1f1517;color:#fff;font-size:13px;padding:9px 16px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100vw - 24px);white-space:nowrap;animation:ckupd .25s ease}" +
+    "#ck-upd i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}" +
+    "@keyframes ckupd{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}" +
     "#ck-install[hidden]{display:none}" +
     "#ck-install .box{position:relative;width:100%;max-width:400px;background:#fff;color:#2A1417;border-radius:22px;padding:0 20px 16px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
     "#ck-install img{width:64px;height:64px;border-radius:17px;margin:-32px auto 12px;display:block;border:3px solid #fff;box-shadow:0 8px 20px rgba(67,16,22,.35)}" +
@@ -598,6 +601,39 @@
   function syncInstallUi() {
     var hb = document.getElementById("ck-hero-install");
     if (hb) hb.hidden = isStandalone();
+    renderAccountCard();
+  }
+  // Home-page card showing who is logged in. Shown once the app is installed (the
+  // install button is gone by then) or whenever someone is logged in.
+  function renderAccountCard() {
+    var c = document.getElementById("ck-hero-account");
+    if (!c) return;
+    if (!st.loggedIn && !isStandalone()) { c.hidden = true; return; }
+    c.hidden = false;
+    if (st.loggedIn) {
+      var m = mob10(), nm = st.name || "", org = (st.profile && st.profile.organization) || "";
+      var sub = "+91 " + (m.length === 10 ? m.slice(0, 5) + " " + m.slice(5) : m);
+      c.className = "acct";
+      c.innerHTML = '<div class="av">' + esc((nm || "G").charAt(0).toUpperCase()) + '</div><div class="who"><b>' + esc(nm || "Guest") + "</b><span>" + esc(sub) + "</span>" + (org ? '<span class="org">' + esc(org) + "</span>" : "") + '</div><span class="live"><i></i>Logged in</span>';
+      c.onclick = function () { showSms("messages"); };
+    } else {
+      c.className = "acct off";
+      c.innerHTML = '<div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><div class="who"><b>Not logged in</b><span>Log in to see your SMS</span></div><span class="live">Log in</span>';
+      c.onclick = function () { st.step = "mobile"; st.password = ""; openLogin(); };
+    }
+  }
+  // First load after a new deploy: flash when it was built, for 5 seconds.
+  function checkUpdateToast() {
+    fetch("/build-info.json", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
+      if (!info || !info.builtAt) return;
+      var seen = null; try { seen = localStorage.getItem("ck_build_seen_site"); } catch (e) {}
+      if (seen === info.builtAt) return;
+      try { localStorage.setItem("ck_build_seen_site", info.builtAt); } catch (e) {}
+      var when = new Date(info.builtAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+      var t = elem('<div id="ck-upd" role="status"><i></i><span><b>Updated</b> · ' + esc(when) + " IST</span></div>");
+      document.body.appendChild(t);
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 5000);
+    }).catch(function () {});
   }
   window.ckInstall = function () { doInstall(); };
   function injectMenu() {
@@ -662,6 +698,7 @@
   function boot() {
     var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
     syncHeaderH();
+    checkUpdateToast();
     window.addEventListener("load", syncHeaderH);
     window.addEventListener("resize", syncHeaderH);
     // Shadow/border on the sticky Total bar once the page has scrolled under it.

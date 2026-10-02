@@ -42,6 +42,20 @@
   .install-btn .t span{display:block;font-size:.76rem;color:#F1CB86;margin-top:1px}
   .install-btn .dl{width:34px;height:34px;border-radius:50%;background:var(--gold);color:#3a1e05;display:grid;place-items:center;flex:none}
   .install-btn .dl svg{width:18px;height:18px}
+  .hero-grid>*{min-width:0}
+  .acct{display:flex;align-items:center;gap:12px;width:100%;max-width:420px;min-width:0;box-sizing:border-box;padding:10px 14px 10px 10px;margin:22px 0 14px;border-radius:16px;border:1px solid rgba(241,203,134,.55);background:linear-gradient(135deg,rgba(251,244,232,.14),rgba(251,244,232,.05));color:#fff;cursor:pointer}
+  .acct[hidden]{display:none}
+  .install-btn:not([hidden])+.acct{margin-top:0}
+  .acct .av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-size:1.05rem;color:#3a1e05;background:linear-gradient(180deg,var(--gold-bright),var(--gold));box-shadow:0 0 0 3px rgba(241,203,134,.25)}
+  .acct .av svg{width:20px;height:20px}
+  .acct .who{flex:1 1 0;min-width:0;overflow:hidden}
+  .acct .who b{display:block;font-size:.95rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acct .who span{display:block;font-size:.76rem;color:#F1CB86;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acct .who .org{color:#fff;opacity:.85;font-weight:600}
+  .acct .live{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:.7rem;font-weight:700;letter-spacing:.03em;padding:5px 10px;border-radius:999px;background:rgba(46,160,90,.2);color:#8be0ae;border:1px solid rgba(139,224,174,.35)}
+  .acct .live i{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25)}
+  .acct.off .av{background:rgba(255,255,255,.14);color:#F1CB86;box-shadow:none}
+  .acct.off .live{background:var(--gold);color:#3a1e05;border-color:transparent;font-size:.78rem}
   .btn-ghost{border-color:rgba(255,255,255,.4);color:#fff}
   .btn-ghost:hover{background:rgba(255,255,255,.12);transform:translateY(-2px)}
   .btn-line{border-color:var(--gold);color:var(--maroon)}
@@ -281,6 +295,7 @@
           <span class="t"><b>Install Application</b><span>Add CHECKIN to your home screen</span></span>
           <span class="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span>
         </button>
+        <div class="acct" id="ck-hero-account" hidden></div>
         <div class="cta">
           <a href="#contact" class="btn btn-gold">Request a free demo</a>
           <a href="#modules" class="btn btn-ghost">Explore modules</a>

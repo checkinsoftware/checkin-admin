@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import NavLink from "@/components/NavLink";
+import UpdateToast from "@/components/UpdateToast";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </header>
+
+      <UpdateToast />
 
       {/* Full-width content */}
       <main className="flex-1 p-5">{children}</main>
