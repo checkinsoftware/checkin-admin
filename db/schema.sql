@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS device_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS device_tokens_mobile_idx ON device_tokens (mobile);
+-- True when the token was registered from the installed app (standalone window), not a browser tab.
+ALTER TABLE device_tokens ADD COLUMN IF NOT EXISTS installed BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS notification_log (
   id         BIGSERIAL PRIMARY KEY,

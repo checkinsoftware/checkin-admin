@@ -80,6 +80,7 @@ export function formatDate(value: Date | string | null) {
   if (!value) return "—";
   const d = typeof value === "string" ? new Date(value) : value;
   return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
     year: "numeric",

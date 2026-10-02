@@ -515,7 +515,7 @@
       var messaging = fb.messaging();
       var token = await messaging.getToken({ vapidKey: cfg.vapidKey, serviceWorkerRegistration: reg });
       if (token) {
-        await fetch(API.device, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ token: token }) });
+        await fetch(API.device, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ token: token, installed: isStandalone() }) });
         st.fcmOn = true; st.fcmToken = token;
         // While a tab is open FCM delivers here instead of the SW.
         messaging.onMessage(function (payload) {

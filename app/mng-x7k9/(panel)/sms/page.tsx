@@ -1,49 +1,23 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import ClearDataButton from "@/components/ClearDataButton";
-import DeleteSmsButton from "@/components/DeleteSmsButton";
 import SmsFilters from "@/components/SmsFilters";
+import SmsList from "@/components/SmsList";
 import { SetupNotice } from "@/components/ui";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import {
   DbNotReady,
   distinctNumbers,
+  guestInfo,
   hotelTagsFromUsers,
   listSms,
   parseFilters,
-  type SmsRow,
 } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "SMS Notifications · Checkin Admin" };
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-/** The hotel's receipts say "Entry Receipt" / "Exit Receipt" — surface that as a pill. */
-function kindOf(message: string): "entry" | "exit" | null {
-  const text = message.toLowerCase();
-  if (text.includes("entry receipt")) return "entry";
-  if (text.includes("exit receipt")) return "exit";
-  return null;
-}
-
-function when(value: Date | string | null) {
-  if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function Pills({ row }: { row: SmsRow }) {
-  const kind = kindOf(row.message);
-  return (
-    <>
-      {kind && <span className={`pill pill-${kind}`}>{kind.toUpperCase()}</span>}
-      <span className={`pill pill-${row.status}`}>{row.status.toUpperCase()}</span>
-    </>
-  );
-}
 
 export default async function SmsListPage({
   searchParams,
@@ -64,7 +38,8 @@ export default async function SmsListPage({
       v === undefined ? [] : [[k, Array.isArray(v) ? v[0] : v] as [string, string]]
     )
   );
-  if (forcedTag) qs.set("tag", forcedTag); // keep the lock on export / pagination links
+  qs.delete("page");
+  if (forcedTag) qs.set("tag", forcedTag); // keep the lock on export / load-more requests
 
   let data;
   try {
@@ -91,12 +66,27 @@ export default async function SmsListPage({
   }
 
   const { rows, pages, stats } = data;
-  const startIndex = (filters.page - 1) * filters.pageSize;
-  const pageLink = (page: number) => {
-    const next = new URLSearchParams(qs.toString());
-    next.set("page", String(page));
-    return `/mng-x7k9/sms?${next.toString()}`;
-  };
+  let guests: Awaited<ReturnType<typeof guestInfo>> = {};
+  try {
+    guests = await guestInfo(rows.map((r) => r.recipient));
+  } catch {
+    guests = {};
+  }
+  const listRows = rows.map((r) => ({
+    id: r.id,
+    recipient: r.recipient,
+    guest_name: r.guest_name,
+    message: r.message,
+    status: r.status,
+    provider: r.provider,
+    error: r.error,
+    source_ip: r.source_ip,
+    created_at: new Date(r.created_at).toISOString(),
+    sent_at: r.sent_at ? new Date(r.sent_at).toISOString() : null,
+  }));
+  const listGuests = Object.fromEntries(
+    Object.entries(guests).map(([m, g]) => [m, { joined: new Date(g.joined).toISOString(), devices: g.devices, installed: g.installed }])
+  );
 
   return (
     <div className="sms-page">
@@ -113,122 +103,22 @@ export default async function SmsListPage({
 
       <div className="total">
         <span>Total SMS - {stats.total.toLocaleString("en-IN")}</span>
-        <span className="dim">Delivered {stats.delivered}</span>
-        <span className="dim">Pending {stats.pending}</span>
+        <span className="dim" title="Delivery report received from the SMS gateway">Delivered {stats.delivered}</span>
+        <span className="dim" title="Sent to the gateway, no delivery report received yet">Pending {stats.pending}</span>
         <span className="dim">Failed {stats.failed}</span>
         <a href={`/api/sms/export?${qs.toString()}`} className="btn btn-ghost" style={{ marginLeft: "auto" }}>
           ⤓ Export CSV
         </a>
       </div>
 
-      {/* desktop table */}
-      <div className="table-shell">
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 55 }}>S.No.</th>
-              <th style={{ width: 160 }}>Mobile No</th>
-              <th>SMS Text</th>
-              <th style={{ width: 150 }}>Source IP</th>
-              <th style={{ width: 150 }}>Created</th>
-              <th style={{ width: 120 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="dim" style={{ padding: "34px 10px", textAlign: "center" }}>
-                  No messages found. Try clearing the filters.
-                </td>
-              </tr>
-            )}
-            {rows.map((row, i) => (
-              <tr key={row.id}>
-                <td className="mono">{startIndex + i + 1}</td>
-                <td className="mono">
-                  {row.recipient}
-                  {row.guest_name && <div className="dim">{row.guest_name}</div>}
-                </td>
-                <td className="sms-text">
-                  <Pills row={row} />
-                  {row.message}
-                  {row.error && <div style={{ color: "#c0392b", fontSize: 12 }}>⚠ {row.error}</div>}
-                </td>
-                <td className="dim mono">{row.source_ip || "—"}</td>
-                <td className="dim mono">{when(row.sent_at ?? row.created_at)}</td>
-                <td>{isHotel ? <span className="dim">—</span> : <DeleteSmsButton id={row.id} />}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="pager">
-          <span>
-            Page {filters.page} of {pages}
-          </span>
-          <span>
-            {filters.page > 1 ? (
-              <Link href={pageLink(filters.page - 1)}>← Previous</Link>
-            ) : (
-              <span className="off">← Previous</span>
-            )}{" "}
-            {filters.page < pages ? (
-              <Link href={pageLink(filters.page + 1)}>Next →</Link>
-            ) : (
-              <span className="off">Next →</span>
-            )}
-          </span>
-        </div>
-      </div>
-
-      {/* mobile cards */}
-      <div className="cards">
-        {rows.length === 0 && (
-          <div className="mcard dim" style={{ textAlign: "center" }}>
-            No messages found.
-          </div>
-        )}
-        {rows.map((row, i) => (
-          <div className="mcard" key={row.id}>
-            <div className="top">
-              <span className="num">
-                #{startIndex + i + 1} · {row.recipient}
-              </span>
-              <Pills row={row} />
-            </div>
-            <div className="txt">{row.message}</div>
-            {row.error && (
-              <div style={{ color: "#c0392b", fontSize: 12, marginTop: 6 }}>⚠ {row.error}</div>
-            )}
-            <div className="meta">
-              <span>{row.source_ip || row.provider || ""}</span>
-              <span>{when(row.sent_at ?? row.created_at)}</span>
-            </div>
-            {!isHotel && (
-              <div style={{ marginTop: 10 }}>
-                <DeleteSmsButton id={row.id} />
-              </div>
-            )}
-          </div>
-        ))}
-        <div className="pager" style={{ border: 0 }}>
-          <span>
-            Page {filters.page} of {pages}
-          </span>
-          <span>
-            {filters.page > 1 ? (
-              <Link href={pageLink(filters.page - 1)}>← Prev</Link>
-            ) : (
-              <span className="off">← Prev</span>
-            )}{" "}
-            {filters.page < pages ? (
-              <Link href={pageLink(filters.page + 1)}>Next →</Link>
-            ) : (
-              <span className="off">Next →</span>
-            )}
-          </span>
-        </div>
-      </div>
+      <SmsList
+        key={qs.toString()}
+        initialRows={listRows}
+        initialGuests={listGuests}
+        initialPages={pages}
+        query={qs.toString()}
+        isHotel={isHotel}
+      />
 
       {!isHotel && (
         <div style={{ marginTop: 18 }}>

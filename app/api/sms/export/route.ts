@@ -2,13 +2,14 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { allSmsForExport, DbNotReady, parseFilters } from "@/lib/sms";
+import { formatISTSql } from "@/lib/time";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function csvCell(value: unknown) {
   if (value === null || value === undefined) return "";
-  const text = value instanceof Date ? value.toISOString() : String(value);
+  const text = value instanceof Date ? formatISTSql(value) : String(value);
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -34,13 +35,13 @@ export async function GET(req: Request) {
       "cost",
       "error",
       "source_ip",
-      "created_at",
-      "sent_at",
+      "created_at_ist",
+      "sent_at_ist",
     ];
     const csv = [
       header.join(","),
       ...rows.map((row) =>
-        header.map((key) => csvCell((row as unknown as Record<string, unknown>)[key])).join(",")
+        header.map((key) => csvCell((row as unknown as Record<string, unknown>)[key.replace(/_ist$/, "")])).join(",")
       ),
     ].join("\n");
 

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function DeleteSmsButton({ id }: { id: string }) {
+export default function DeleteSmsButton({ id, onDeleted }: { id: string; onDeleted?: (id: string) => void }) {
   const router = useRouter();
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -11,8 +11,10 @@ export default function DeleteSmsButton({ id }: { id: string }) {
   async function remove() {
     setBusy(true);
     const res = await fetch(`/api/admin/sms/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
-    else setBusy(false);
+    if (res.ok) {
+      if (onDeleted) onDeleted(id);
+      else router.refresh();
+    } else setBusy(false);
     setAsking(false);
   }
 

@@ -259,3 +259,12 @@ body {
   .table-shell { display: none; }
   .cards { display: block; }
 }
+
+/* SMS list: per-number status under the mobile number */
+.gmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 4px; }
+.gicon { width: 16px; height: 16px; border-radius: 4px; vertical-align: -3px; margin-right: 5px; }
+.gpill { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; letter-spacing: .02em; }
+.gpill.on { background: #e6f7ee; color: #198754; }
+.gpill.off { background: #f1f3f6; color: #6b778c; }
+.gjoined { font-size: 11.5px; color: #6b778c; margin-top: 3px; }
+.listend { text-align: center; color: #8793a8; font-size: 12.5px; padding: 16px 0 6px; }

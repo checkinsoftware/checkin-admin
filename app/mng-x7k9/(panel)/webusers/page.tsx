@@ -28,7 +28,7 @@ type UserRow = {
 function fmt(v: Date | string | null) {
   if (!v) return "—";
   const d = typeof v === "string" ? new Date(v) : v;
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 }
 
 export default async function WebUsersPage() {
