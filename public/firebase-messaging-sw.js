@@ -25,7 +25,7 @@ if (config.projectId) {
     self.registration.showNotification(title, {
       body,
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/badge-96.png", // monochrome mask: Android draws only its shape in the status bar
       tag: d.smsId ? "ck-sms-" + d.smsId : undefined,
       data: { url },
     });
