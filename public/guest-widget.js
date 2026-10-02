@@ -38,6 +38,7 @@
     ".cklbl{font-size:13px;font-weight:700;color:#5E1B22;margin:14px 2px 6px}" +
     /* auto-shown "install this app" banner, top of page */
     "#ck-install{position:fixed;left:10px;right:10px;top:10px;z-index:1200;display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid #E7D9BF;border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(67,16,22,.2);max-width:440px;margin:0 auto}" +
+    "#ck-install[hidden]{display:none}" +
     "#ck-install .top{display:flex;align-items:center;gap:12px}" +
     "#ck-install img{width:42px;height:42px;border-radius:11px;flex:none}" +
     "#ck-install .txt{flex:1;min-width:0}" +
@@ -543,16 +544,24 @@
     else if (a === "logout") logout();
   }
   function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent || ""); }
+  // Standalone window, or this browser already installed the app (remembered
+  // locally, since a normal tab can't otherwise tell it's been installed).
   function isStandalone() {
+    try { if (localStorage.getItem("ck_installed") === "1") return true; } catch (e) {}
     try { return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (e) { return false; }
   }
+  function markInstalled() { try { localStorage.setItem("ck_installed", "1"); } catch (e) {} }
   // Add-to-Home-Screen: Android/Chrome uses the captured beforeinstallprompt;
   // iOS Safari has no such API, so we show the manual Share → Add steps.
   async function doInstall() {
     if (st.installPrompt) {
       closeSiteMenu();
-      try { st.installPrompt.prompt(); await st.installPrompt.userChoice; } catch (e) {}
-      st.installPrompt = null; injectMenu();
+      try {
+        st.installPrompt.prompt();
+        var choice = await st.installPrompt.userChoice;
+        if (choice && choice.outcome === "accepted") markInstalled();
+      } catch (e) {}
+      st.installPrompt = null; hideInstallBanner(false); injectMenu();
     } else if (isIOS()) {
       alert("To install on iPhone: tap the Share button (⬆️) in Safari, then choose 'Add to Home Screen'.");
     } else {
@@ -658,7 +667,7 @@
     // showInstallBanner() itself is also called right after a fresh login
     // (see verify()/passwordLogin()) and below, once refreshMe() resolves.
     window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); if (st.loggedIn) showInstallBanner(); });
-    window.addEventListener("appinstalled", function () { st.installPrompt = null; injectMenu(); hideInstallBanner(false); });
+    window.addEventListener("appinstalled", function () { markInstalled(); st.installPrompt = null; injectMenu(); hideInstallBanner(false); });
     // Re-place the profile block (header vs drawer) when crossing the breakpoint.
     try { var mq = window.matchMedia("(min-width: 821px)"); (mq.addEventListener ? mq.addEventListener("change", injectMenu) : mq.addListener(injectMenu)); } catch (e) {}
     ov = elem('<div id="ckov"><div id="cksheet"></div></div>');
