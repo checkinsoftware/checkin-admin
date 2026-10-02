@@ -7,10 +7,6 @@ export const dynamic = "force-dynamic";
 
 const OTP_TTL_MINUTES = 10;
 
-// Until an SMS gateway is wired up, OTP_SKIP=true returns the code in the response
-// so the flow can be used end to end. Set it to false once SMS sending is live.
-const otpSkipEnabled = () => process.env.OTP_SKIP !== "false";
-
 export async function POST(req: Request) {
   if (!hasDatabase()) {
     return NextResponse.json({ error: "Database is not configured." }, { status: 503 });
@@ -46,12 +42,7 @@ export async function POST(req: Request) {
     throw err;
   }
 
-  // TODO: send `code` to `mobile` through the SMS gateway once it is connected.
-  return NextResponse.json({
-    ok: true,
-    mobile,
-    expiresInMinutes: OTP_TTL_MINUTES,
-    skipVerification: otpSkipEnabled(),
-    ...(otpSkipEnabled() ? { devCode: code } : {}),
-  });
+  // The code is never returned to the browser. Until an SMS gateway is connected
+  // (TODO: send `code` to `mobile` here), admins read it from the Web Users page.
+  return NextResponse.json({ ok: true, mobile, expiresInMinutes: OTP_TTL_MINUTES });
 }

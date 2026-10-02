@@ -78,10 +78,12 @@ asks for browser permission, gets an FCM token and stores it in `device_tokens`.
 `lib/sms-insert.ts` then pushes to every token on that number after each insert, logging
 outcomes to `notification_log`.
 
-`OTP_SKIP` defaults to **true**: any code is accepted and the code is returned in the API
-response and shown on screen, because there is no SMS gateway yet. **Anyone can therefore
-log in as any number and read its messages** — the owner accepted this for now. Set
-`OTP_SKIP=false` the moment SMS sending works.
+`OTP_SKIP` is now **false** in Netlify (set 2 Oct 2026): codes are really verified and the
+code is never returned to the browser or shown on the site. There is no SMS gateway yet, so
+nobody receives it — admins read it from the Web Users page and pass it on; guests can
+also log in with a password (admin can create accounts with one) or a magic link. Setting
+`OTP_SKIP=true` again would re-open "any code works", so don't. When SMS sending is wired,
+`app/api/user/otp/send/route.ts` has the TODO where the code should be sent.
 
 FCM uses the HTTP v1 API with a service account; `lib/fcm.ts` mints the Google OAuth token
 itself with `jose`, so `firebase-admin` is deliberately not a dependency. Dead tokens are
@@ -154,11 +156,9 @@ The database is **empty** — every demo and test row was cleared after testing.
 
 **Pending, in the owner's priority order:**
 
-1. **Real OTP sending.** `OTP_SKIP=true`, so any code is accepted and the code is shown on
-   screen. Anyone can therefore log in as any number and read its messages and take its
-   notifications. This must be closed before guests use it — the SMS vendor already calls
-   `SMSInsert`, so sending the OTP through the same gateway is the obvious route. Then set
-   `OTP_SKIP=false`.
+1. **Real OTP sending.** The on-screen code is gone and `OTP_SKIP=false`, but the OTP is not
+   delivered to the guest at all yet (see above). The SMS vendor already calls `SMSInsert`, so
+   sending the OTP through the same gateway is the obvious route.
 2. **The homepage Flash banner.** The 2023 site embeds `flash/checkin banner.swf`, which no
    browser can play, leaving a blank band on the homepage. The owner asked for a static
    image in its place; not done yet.

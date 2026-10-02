@@ -10,8 +10,6 @@ export default function UserLoginForm() {
   const [step, setStep] = useState<Step>("mobile");
   const [mobile, setMobile] = useState("");
   const [code, setCode] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
-  const [skip, setSkip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -31,8 +29,6 @@ export default function UserLoginForm() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) setError(data.error || "Could not send the code.");
       else {
-        setDevCode(data.devCode ?? null);
-        setSkip(Boolean(data.skipVerification));
         setStep("otp");
       }
     } catch {
@@ -112,18 +108,6 @@ export default function UserLoginForm() {
           Change
         </button>
       </p>
-
-      {skip && (
-        <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          SMS sending is not connected yet, so verification is skipped — any code will do.
-          {devCode && (
-            <>
-              {" "}
-              Your code is <strong className="tracking-widest">{devCode}</strong>.
-            </>
-          )}
-        </div>
-      )}
 
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">6-digit code</label>

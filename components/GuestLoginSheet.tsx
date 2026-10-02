@@ -13,8 +13,6 @@ export default function GuestLoginSheet() {
   const [step, setStep] = useState<Step>("mobile");
   const [mobile, setMobile] = useState("");
   const [code, setCode] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
-  const [skip, setSkip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -32,8 +30,6 @@ export default function GuestLoginSheet() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) setError(data.error || "Could not send the code.");
       else {
-        setDevCode(data.devCode ?? null);
-        setSkip(Boolean(data.skipVerification));
         setStep("otp");
       }
     } catch {
@@ -164,17 +160,6 @@ export default function GuestLoginSheet() {
                   Change
                 </button>
               </p>
-              {skip && (
-                <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  SMS abhi connect nahi hai — koi bhi code chalega.
-                  {devCode && (
-                    <>
-                      {" "}
-                      Aapka code: <strong className="tracking-widest">{devCode}</strong>
-                    </>
-                  )}
-                </div>
-              )}
               <input
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-lg tracking-[0.5em] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 inputMode="numeric"

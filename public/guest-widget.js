@@ -204,7 +204,7 @@
     try {
       var r = await fetch(API.send, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ mobile: st.mobile }) });
       var d = await r.json();
-      if (!r.ok) st.err = d.error || "Could not send code."; else { st.dev = d.devCode || null; st.skip = !!d.skipVerification; st.step = "otp"; }
+      if (!r.ok) st.err = d.error || "Could not send code."; else { st.step = "otp"; }
     } catch (e) { st.err = "Network error."; }
     st.busy = false; renderLogin();
   }
@@ -255,7 +255,6 @@
       h += '<button class="ckskip" data-a="closeLogin">Skip for now</button>';
     } else {
       h += '<div class="cksub" style="margin-bottom:8px">Code sent to <b>+91 ' + esc(st.mobile) + '</b> · <a href="#" data-a="back" style="color:#A9660F">Change</a></div>';
-      if (st.skip) h += '<div class="ckinfo">SMS isn\'t connected yet — any code will work.' + (st.dev ? " Your code: <b>" + esc(st.dev) + "</b>" : "") + "</div>";
       h += '<input class="ckinp" id="ckcode" style="text-align:center;letter-spacing:.4em" inputmode="numeric" maxlength="6" placeholder="••••••" value="' + esc(st.code || "") + '">';
       if (st.err) h += '<div class="ckerr">' + esc(st.err) + "</div>";
       h += '<button class="ckbtn" data-a="verify"' + (st.busy ? " disabled" : "") + ">" + (st.busy ? "Verifying…" : "Verify & continue") + "</button>";
