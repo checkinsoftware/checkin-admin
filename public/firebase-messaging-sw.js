@@ -19,13 +19,14 @@ if (config.projectId) {
 
   messaging.onBackgroundMessage((payload) => {
     const d = payload.data || {};
-    const title = (payload.notification && payload.notification.title) || "New SMS";
-    const body = (payload.notification && payload.notification.body) || "";
+    const title = d.title || (payload.notification && payload.notification.title) || "CHECKIN";
+    const body = d.body || (payload.notification && payload.notification.body) || "";
     const url = d.url || (d.smsId ? "/sms?hl=" + encodeURIComponent(d.smsId) : "/sms");
     self.registration.showNotification(title, {
       body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
+      tag: d.smsId ? "ck-sms-" + d.smsId : undefined,
       data: { url },
     });
   });

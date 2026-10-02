@@ -103,9 +103,12 @@ export async function pushToMobile(
         body: JSON.stringify({
           message: {
             token: device.token,
-            notification: { title, body },
-            data: { ...data, url: deepPath },
+            // Data-only on purpose: a top-level "notification" makes Firebase
+            // auto-display its own (logo-less) popup on top of the one our
+            // service worker shows, so every SMS arrived twice.
+            data: { ...data, title, body, url: deepPath },
             webpush: {
+              headers: { Urgency: "high" },
               fcmOptions: { link: deepLink },
             },
           },

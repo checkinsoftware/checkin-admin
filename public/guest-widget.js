@@ -521,7 +521,7 @@
         // While a tab is open FCM delivers here instead of the SW.
         messaging.onMessage(function (payload) {
           var d = (payload && payload.data) || {};
-          var note = (payload && payload.notification) || {};
+          var note = (payload && payload.notification) || { title: d.title, body: d.body };
           if (document.hidden && typeof Notification !== "undefined" && Notification.permission === "granted") {
             try {
               var n = new Notification(note.title || "CHECKIN", { body: note.body || "", tag: "ck-sms-" + (d.smsId || ""), icon: "/icon-192.png" });
