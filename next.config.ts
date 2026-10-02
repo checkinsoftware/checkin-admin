@@ -19,6 +19,29 @@ const nextConfig: NextConfig = {
       { source: "/welcome", destination: "/index.html" },
     ];
   },
+  // Baseline hardening for everything Next serves (pages, admin, APIs). The same
+  // headers are in netlify.toml for the static files the CDN serves directly.
+  async headers() {
+    const base = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Strict-Transport-Security", value: "max-age=31536000" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+    ];
+    return [
+      { source: "/:path*", headers: base },
+      // Admin and API responses carry private data: never cache, never index.
+      {
+        source: "/mng-x7k9/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+    ];
+  },
   async redirects() {
     return [
       { source: "/admin", destination: "/", permanent: false },

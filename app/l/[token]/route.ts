@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
 import { absoluteUrl } from "@/lib/site-url";
-import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
+import { createUserToken, magicCookieMaxAge, USER_COOKIE } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,12 +52,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const dest = absoluteUrl("/welcome", req);
   if (hotel) dest.searchParams.set("h", hotel);
   const res = NextResponse.redirect(dest);
-  res.cookies.set(USER_COOKIE, await createUserToken(mobile), {
+  res.cookies.set(USER_COOKIE, await createUserToken(mobile, { magic: true }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: userCookieMaxAge,
+    maxAge: magicCookieMaxAge,
   });
   return res;
 }

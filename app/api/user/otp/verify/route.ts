@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
+import { clientIp, tooMany } from "@/lib/rate-limit";
 import { normaliseMobile } from "@/lib/sms-insert";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
 
@@ -26,6 +27,11 @@ export async function POST(req: Request) {
 
   const mobile = normaliseMobile(mobileRaw);
   if (!mobile) return NextResponse.json({ error: "Invalid mobile number." }, { status: 400 });
+
+  // A 6-digit code has only a million combinations, so cap guesses per number and per IP.
+  if ((await tooMany(`otp-verify:m:${mobile}`, 6, 600)) || (await tooMany(`otp-verify:ip:${clientIp(req)}`, 30, 600))) {
+    return NextResponse.json({ error: "Too many attempts. Please wait a few minutes and try again." }, { status: 429 });
+  }
 
   if (!skipVerification()) {
     const rows = await query<{ id: string }>(

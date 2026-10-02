@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasDatabase, query } from "@/lib/db";
+import { clientIp, tooMany } from "@/lib/rate-limit";
 import { normaliseMobile } from "@/lib/sms-insert";
 
 export const runtime = "nodejs";
@@ -22,6 +23,11 @@ export async function POST(req: Request) {
   const mobile = normaliseMobile(raw);
   if (!mobile) {
     return NextResponse.json({ error: "Please enter a valid mobile number." }, { status: 400 });
+  }
+
+  // Stops anyone flooding a guest with codes or filling the table.
+  if ((await tooMany(`otp-send:m:${mobile}`, 5, 600)) || (await tooMany(`otp-send:ip:${clientIp(req)}`, 20, 600))) {
+    return NextResponse.json({ error: "Too many attempts. Please wait a few minutes and try again." }, { status: 429 });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

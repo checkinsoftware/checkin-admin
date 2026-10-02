@@ -6,10 +6,12 @@ import { createUserToken, USER_COOKIE, userCookieMaxAge, verifyUserToken } from 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// A logged-in guest stays logged in until they tap Logout: every successful check
-// re-issues the cookie, so a year of inactivity is the only thing that can expire it.
-async function withFreshSession(body: object, mobile: string) {
+// A guest who logged in with OTP or a password stays logged in until they tap Logout:
+// every successful check re-issues the cookie, so only a year of inactivity expires it.
+async function withFreshSession(body: object, mobile: string, magic: boolean) {
   const res = NextResponse.json(body);
+  // A magic-link session keeps its fixed 7-day life; only OTP/password sessions renew.
+  if (magic) return res;
   res.cookies.set(USER_COOKIE, await createUserToken(mobile), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -75,8 +77,8 @@ export async function GET(req: Request) {
     } catch {
       name = "";
     }
-    return withFreshSession({ loggedIn: true, mobile: session.mobile, name, profile, total, messages }, session.mobile);
+    return withFreshSession({ loggedIn: true, mobile: session.mobile, name, profile, total, messages }, session.mobile, !!session.magic);
   }
 
-  return withFreshSession({ loggedIn: true, mobile: session.mobile, name, total, messages }, session.mobile);
+  return withFreshSession({ loggedIn: true, mobile: session.mobile, name, total, messages }, session.mobile, !!session.magic);
 }

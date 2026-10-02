@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
+import { clientIp, tooMany } from "@/lib/rate-limit";
 import { normaliseMobile } from "@/lib/sms-insert";
 import { verifyPassword } from "@/lib/password";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
@@ -25,6 +26,11 @@ export async function POST(req: Request) {
   const mobile = normaliseMobile(mobileRaw);
   if (!mobile) return NextResponse.json({ error: "Invalid mobile number." }, { status: 400 });
   if (!password) return NextResponse.json({ error: "Password is required." }, { status: 400 });
+
+  // Slows down password guessing against any one number, and from any one IP.
+  if ((await tooMany(`pw:m:${mobile}`, 8, 900)) || (await tooMany(`pw:ip:${clientIp(req)}`, 40, 900))) {
+    return NextResponse.json({ error: "Too many attempts. Please wait a few minutes and try again." }, { status: 429 });
+  }
 
   const rows = await query<{ password_hash: string | null }>(
     `SELECT password_hash FROM app_users WHERE mobile = $1 LIMIT 1`,

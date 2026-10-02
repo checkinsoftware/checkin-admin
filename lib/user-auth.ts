@@ -12,13 +12,19 @@ function key() {
   return new TextEncoder().encode(secret);
 }
 
-export type UserSession = { mobile: string; role: "user" };
+// A magic-link login is a shared-link login, so it ends after a week. OTP and password
+// logins are the guest's own and stay until they tap Logout.
+const MAGIC_DAYS = 7;
 
-export async function createUserToken(mobile: string) {
-  return new SignJWT({ mobile, role: "user" })
+export type UserSession = { mobile: string; role: "user"; magic?: boolean };
+
+export async function createUserToken(mobile: string, opts: { magic?: boolean } = {}) {
+  const claims: Record<string, unknown> = { mobile, role: "user" };
+  if (opts.magic) claims.magic = true;
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(`${DAYS}d`)
+    .setExpirationTime(`${opts.magic ? MAGIC_DAYS : DAYS}d`)
     .sign(key());
 }
 
@@ -27,10 +33,11 @@ export async function verifyUserToken(token?: string): Promise<UserSession | nul
   try {
     const { payload } = await jwtVerify(token, key());
     if (payload.role !== "user" || typeof payload.mobile !== "string") return null;
-    return { mobile: payload.mobile, role: "user" };
+    return { mobile: payload.mobile, role: "user", magic: payload.magic === true };
   } catch {
     return null;
   }
 }
 
 export const userCookieMaxAge = DAYS * 24 * 60 * 60;
+export const magicCookieMaxAge = MAGIC_DAYS * 24 * 60 * 60;

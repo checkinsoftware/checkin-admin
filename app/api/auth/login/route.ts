@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE, sessionMaxAge } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
 import { hasDatabase } from "@/lib/db";
+import { tooMany } from "@/lib/rate-limit";
 import { adminUserExists, verifyAdminUser } from "@/lib/admin-users";
 
 export const runtime = "nodejs";
@@ -29,6 +30,11 @@ export async function POST(req: Request) {
       { error: "Too many attempts. Try again in a few minutes." },
       { status: 429 }
     );
+  }
+
+  // The in-memory throttle above is per serverless instance; this one is shared.
+  if (hasDatabase() && (await tooMany(`admin-login:ip:${ip}`, 10, 900))) {
+    return NextResponse.json({ error: "Too many attempts. Try again in a few minutes." }, { status: 429 });
   }
 
   let username = "";

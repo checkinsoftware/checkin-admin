@@ -175,3 +175,10 @@ CREATE TABLE IF NOT EXISTS user_activity (
 );
 
 CREATE INDEX IF NOT EXISTS user_activity_mobile_idx ON user_activity (mobile, created_at DESC);
+
+-- Shared (all serverless instances) request counters for login/OTP throttling.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key      TEXT PRIMARY KEY,
+  count    INT         NOT NULL,
+  reset_at TIMESTAMPTZ NOT NULL
+);

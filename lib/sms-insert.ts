@@ -137,7 +137,10 @@ export async function handleSmsInsert(req: Request) {
       { smsId: rows[0].id, mobile }
     );
 
-    return ok({ id: rows[0].id, mobileNo: mobile, status, push });
+    // Nothing about the number is echoed back: the vendor only needs code 0, and an
+    // open endpoint must not reveal whether a number is registered or has push on.
+    void push;
+    return ok({});
   } catch (err) {
     if (typeof err === "object" && err && (err as { code?: string }).code === "42P01") {
       return fail("Table sms_messages does not exist. Run the database setup first.", 503);
