@@ -68,7 +68,8 @@
     "#ck-sms .filt{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}" +
     "#ck-sms .dt{flex:1;min-width:150px;border:1px solid #E7D9BF;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#2C231B;outline:none}" +
     "#ck-sms .rf{width:46px;height:46px;flex:none;border:none;border-radius:12px;background:#E0952A;color:#431016;font-size:18px;cursor:pointer}" +
-    "#ck-sms .clr{border:none;background:none;color:#A9660F;font-size:.85rem;font-weight:700;cursor:pointer;padding:2px 0 10px}" +
+    "#ck-sms .clr{margin-left:auto;border:1.5px solid #E0952A;background:#fff;color:#8A4F08;font-size:.82rem;font-weight:700;cursor:pointer;padding:8px 13px;border-radius:10px;line-height:1.2;box-shadow:0 1px 0 rgba(224,149,42,.25)}" +
+    "#ck-sms .clr:active{background:#FBF4E8}" +
     "#ck-sms .card{background:#fff;border:1px solid #ecdfc6;border-radius:10px;padding:9px 11px;margin-bottom:7px;transition:box-shadow .3s,border-color .3s,background .3s}" +
     "#ck-sms .card p{margin:0;font-size:.86rem;color:#431016;line-height:1.4}" +
     "#ck-sms .card small{display:block;margin-top:4px;color:#a08a6e;font-size:.72rem}" +
@@ -404,8 +405,7 @@
     var dateSuffix = st.date ? ' <span class="ttldate">· ' + esc(dateLabel(st.date)) + "</span>" : "";
     var h = '<div class="sticktop">';
     h += '<div class="top"><span class="ttl">Total SMS - ' + count + dateSuffix + '</span><span class="num">+91 ' + esc(mob10()) + "</span></div>";
-    h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><button class="rf" data-a="refresh" title="Refresh">⟳</button></div>';
-    if (st.date) h += '<button class="clr" data-a="clear">Clear Filters</button>';
+    h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><button class="rf" data-a="refresh" title="Refresh">⟳</button>' + (st.date ? '<button class="clr" data-a="clear">✕ Clear Filters</button>' : "") + "</div>";
     h += "</div>";
     if (!st.messages.length) h += '<div class="empty">No SMS found.' + (st.date ? " (for this date)" : "") + "</div>";
     st.messages.forEach(function (m) {
@@ -511,6 +511,7 @@
     try {
       var params = new URLSearchParams({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId, messagingSenderId: cfg.messagingSenderId, appId: cfg.appId });
       var reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js?" + params.toString(), { scope: "/" });
+      try { reg.update(); } catch (e) {} // pick up a newer worker now, not whenever the browser gets around to it
       await loadScript(FB + "firebase-app-compat.js");
       await loadScript(FB + "firebase-messaging-compat.js");
       var fb = window.firebase;

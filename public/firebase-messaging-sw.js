@@ -4,6 +4,11 @@
 importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
 
+// A new version of this worker must take over right away: until it does, the old one
+// keeps handling pushes (and an old one can't read newer message formats).
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 const params = new URLSearchParams(self.location.search);
 const config = {
   apiKey: params.get("apiKey"),
