@@ -72,7 +72,18 @@
     "#ck-sms .clr:active{background:#FBF4E8}" +
     "#ck-sms .card{background:#fff;border:1px solid #ecdfc6;border-radius:10px;padding:9px 11px;margin-bottom:7px;transition:box-shadow .3s,border-color .3s,background .3s}" +
     "#ck-sms .card p{margin:0;font-size:.86rem;color:#431016;line-height:1.4}" +
-    "#ck-sms .card small{display:block;margin-top:4px;color:#a08a6e;font-size:.72rem}" +
+    "#ck-sms .card small{display:block;color:#a08a6e;font-size:.72rem}" +
+    "#ck-sms .card .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}" +
+    "#ck-sms .card .shr{border:none;background:none;color:#8A4F08;cursor:pointer;padding:6px 8px;margin:-6px -6px -6px 0;border-radius:8px;line-height:0}" +
+    "#ck-sms .card .shr:active{background:#FBF4E8}" +
+    "#ck-sms .card .shr svg{width:19px;height:19px}" +
+    "#ck-share{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(20,6,8,.55)}" +
+    "#ck-share[hidden]{display:none}" +
+    "#ck-share .box{width:100%;max-width:400px;background:#fff;color:#2A1417;border-radius:20px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
+    "#ck-share h3{margin:0 0 12px;font-size:1rem;color:#5E1B22;font-weight:800}" +
+    "#ck-share .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}" +
+    "#ck-share .opts button{border:1px solid #ecdfc6;background:#FBF4E8;color:#431016;border-radius:12px;padding:12px 6px;font-weight:700;font-size:.85rem;cursor:pointer}" +
+    "#ck-share .cancel{display:block;width:100%;margin-top:10px;border:none;background:none;color:#7C6A55;font-weight:600;font-size:.9rem;padding:10px;cursor:pointer}" +
     "#ck-sms .card.hl{background:#FFF7E6;border:2px solid #E0952A;box-shadow:0 0 0 3px rgba(224,149,42,.18)}" +
     "#ck-sms .card .nb{display:inline-block;background:#E0952A;color:#431016;font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}" +
     "#ck-sms .empty{text-align:center;color:#a08a6e;padding:40px 0}" +
@@ -410,7 +421,7 @@
     if (!st.messages.length) h += '<div class="empty">No SMS found.' + (st.date ? " (for this date)" : "") + "</div>";
     st.messages.forEach(function (m) {
       var isHl = st.hl && String(m.id) === String(st.hl);
-      h += '<div class="card' + (isHl ? " hl" : "") + '" data-id="' + esc(String(m.id || "")) + '">' + (isHl ? '<span class="nb">New</span>' : "") + "<p>" + esc(m.message) + "</p><small>" + esc(fmt(m.created_at)) + "</small></div>";
+      h += '<div class="card' + (isHl ? " hl" : "") + '" data-id="' + esc(String(m.id || "")) + '">' + (isHl ? '<span class="nb">New</span>' : "") + "<p>" + esc(m.message) + '</p><div class="meta"><small>' + esc(fmt(m.created_at)) + '</small><button class="shr" data-a="share" aria-label="Share this SMS" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg></button></div></div>';
     });
     return h;
   }
@@ -441,11 +452,37 @@
     h += '<button class="ckbtn" style="background:#fff;color:#b3261e;border:1px solid #e6a9a9;margin-top:10px" data-a="logout">Logout</button></div>';
     return h;
   }
+  // Share one SMS: the phone's own share list (WhatsApp, email, other apps) where the
+  // browser has it, otherwise a small WhatsApp / Email / Copy chooser.
+  var shareBox;
+  function shareSms(id) {
+    var m = null; st.messages.forEach(function (x) { if (String(x.id) === String(id)) m = x; });
+    if (!m) return;
+    var text = m.message + "\n" + fmt(m.created_at);
+    if (navigator.share) { navigator.share({ text: text }).catch(function () {}); return; }
+    if (!shareBox) {
+      shareBox = elem('<div id="ck-share" hidden><div class="box"><h3>Share SMS</h3><div class="opts"><button data-s="wa">WhatsApp</button><button data-s="mail">Email</button><button data-s="copy">Copy</button></div><button class="cancel" data-s="x">Cancel</button></div></div>');
+      shareBox.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-s]");
+        if (!b) { if (e.target === shareBox) shareBox.hidden = true; return; }
+        var k = b.getAttribute("data-s"), t = shareBox._text || "";
+        if (k === "wa") window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank");
+        else if (k === "mail") location.href = "mailto:?subject=" + encodeURIComponent("SMS from CHECKIN") + "&body=" + encodeURIComponent(t);
+        else if (k === "copy") { try { navigator.clipboard.writeText(t); b.textContent = "Copied"; return; } catch (err) {} }
+        shareBox.hidden = true;
+      });
+      document.body.appendChild(shareBox);
+    }
+    shareBox._text = text;
+    Array.prototype.forEach.call(shareBox.querySelectorAll("[data-s=copy]"), function (b) { b.textContent = "Copy"; });
+    shareBox.hidden = false;
+  }
   function onSmsClick(e) {
     var t = e.target.closest("[data-a]"); if (!t) return; e.preventDefault();
     var a = t.getAttribute("data-a");
     if (a === "home") hideSms();
     else if (a === "refresh") refreshMe().then(renderSms);
+    else if (a === "share") { var card = t.closest(".card"); shareSms(card && card.getAttribute("data-id")); }
     else if (a === "clear") { st.date = ""; refreshMe().then(renderSms); }
     else if (a === "tomsg") { st.view = "messages"; renderSms(); }
     else if (a === "editprofile") { st.view = "edit"; renderSms(); }
