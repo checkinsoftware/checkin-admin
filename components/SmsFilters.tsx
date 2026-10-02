@@ -43,6 +43,8 @@ export default function SmsFilters({
     if (q.trim()) next.set("q", q.trim());
     const size = params.get("size");
     if (size) next.set("size", size);
+    const status = params.get("status");
+    if (status) next.set("status", status);
     router.push(`/mng-x7k9/sms${next.toString() ? `?${next}` : ""}`);
   }
 

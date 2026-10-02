@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import ClearDataButton from "@/components/ClearDataButton";
+import Link from "next/link";
 import SmsFilters from "@/components/SmsFilters";
 import SmsList from "@/components/SmsList";
 import { SetupNotice } from "@/components/ui";
@@ -66,6 +67,14 @@ export default async function SmsListPage({
   }
 
   const { rows, pages, stats } = data;
+  const activeStatus = filters.status ?? "";
+  // Counters double as status filters: same filters, status swapped.
+  const statusHref = (status?: string) => {
+    const next = new URLSearchParams(qs.toString());
+    if (status && status !== activeStatus) next.set("status", status);
+    else next.delete("status");
+    return `/mng-x7k9/sms${next.toString() ? `?${next}` : ""}`;
+  };
   let guests: Awaited<ReturnType<typeof guestInfo>> = {};
   try {
     guests = await guestInfo(rows.map((r) => r.recipient));
@@ -102,10 +111,30 @@ export default async function SmsListPage({
       </Suspense>
 
       <div className="total">
-        <span>Total SMS - {stats.total.toLocaleString("en-IN")}</span>
-        <span className="dim" title="Delivery report received from the SMS gateway">Delivered {stats.delivered}</span>
-        <span className="dim" title="Sent to the gateway, no delivery report received yet">Pending {stats.pending}</span>
-        <span className="dim">Failed {stats.failed}</span>
+        <Link href={statusHref()} className={`stat${activeStatus ? "" : " active"}`} title="Show all messages">
+          Total SMS - {stats.total.toLocaleString("en-IN")}
+        </Link>
+        <Link
+          href={statusHref("delivered")}
+          className={`stat${activeStatus === "delivered" ? " active" : ""}`}
+          title="Delivery report received from the SMS gateway. Click to filter."
+        >
+          Delivered {stats.delivered}
+        </Link>
+        <Link
+          href={statusHref("pending")}
+          className={`stat${activeStatus === "pending" ? " active" : ""}`}
+          title="Sent to the gateway, no delivery report received yet. Click to filter."
+        >
+          Pending {stats.pending}
+        </Link>
+        <Link
+          href={statusHref("failed")}
+          className={`stat${activeStatus === "failed" ? " active" : ""}`}
+          title="Gateway reported a failure. Click to filter."
+        >
+          Failed {stats.failed}
+        </Link>
         <a href={`/api/sms/export?${qs.toString()}`} className="btn btn-ghost" style={{ marginLeft: "auto" }}>
           ⤓ Export CSV
         </a>

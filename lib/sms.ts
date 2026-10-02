@@ -63,7 +63,10 @@ function buildWhere(f: SmsFilters) {
       `(recipient ILIKE $${i} OR COALESCE(guest_name,'') ILIKE $${i} OR message ILIKE $${i})`
     );
   }
-  if (f.status && STATUSES.includes(f.status as SmsStatus)) {
+  if (f.status === "pending") {
+    // "Pending" = handed to the gateway but no delivery report yet.
+    clauses.push(`status IN ('queued','sent')`);
+  } else if (f.status && STATUSES.includes(f.status as SmsStatus)) {
     params.push(f.status);
     clauses.push(`status = $${params.length}`);
   }
@@ -105,10 +108,13 @@ function rethrow(err: unknown): never {
 export async function listSms(f: SmsFilters): Promise<SmsListResult> {
   assertDb();
   const { where, params } = buildWhere(f);
+  // The Delivered / Pending / Failed counters act as status filters, so they
+  // must keep counting across statuses while one of them is selected.
+  const { where: statsWhere, params: statsParams } = buildWhere({ ...f, status: undefined });
   const offset = (f.page - 1) * f.pageSize;
 
   try {
-    const [rows, agg] = await Promise.all([
+    const [rows, agg, filtered] = await Promise.all([
       query<SmsRow>(
         `SELECT id::text, recipient, guest_name, message, status, provider, template,
                 segments, cost::text, error, source_ip, created_at, sent_at
@@ -123,16 +129,20 @@ export async function listSms(f: SmsFilters): Promise<SmsListResult> {
                 COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
                 COUNT(*) FILTER (WHERE status IN ('queued','sent'))::int AS pending,
                 COALESCE(SUM(cost),0)::float8 AS cost
-         FROM sms_messages ${where}`,
-        params
+         FROM sms_messages ${statsWhere}`,
+        statsParams
       ),
+      f.status
+        ? query<{ c: number }>(`SELECT COUNT(*)::int AS c FROM sms_messages ${where}`, params)
+        : Promise.resolve(null),
     ]);
 
     const s = agg[0] as unknown as SmsStats;
+    const total = filtered ? filtered[0].c : s.total;
     return {
       rows,
-      total: s.total,
-      pages: Math.max(1, Math.ceil(s.total / f.pageSize)),
+      total,
+      pages: Math.max(1, Math.ceil(total / f.pageSize)),
       stats: s,
     };
   } catch (err) {
