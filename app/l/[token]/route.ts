@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
 import { absoluteUrl } from "@/lib/site-url";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
@@ -45,6 +46,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   } catch {
     /* login must not fail on an audit write */
   }
+
+  await logActivity(mobile, "login", "magic_link", req);
 
   const dest = absoluteUrl("/welcome", req);
   if (hotel) dest.searchParams.set("h", hotel);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
 import { absoluteUrl } from "@/lib/site-url";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
@@ -55,6 +56,8 @@ export async function GET(req: Request) {
   } catch {
     /* login must not fail on an audit write */
   }
+
+  await logActivity(mobile, "login", "magic_link", req);
 
   // Land on the welcome page (thank-you + notification opt-in), hotel name
   // (and the vendor's display-only OTP, if it appended one) in tow.

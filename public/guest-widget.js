@@ -425,6 +425,7 @@
     h += "</select></div>";
     h += '<div class="ckrow"><input class="ckinp" id="pf" placeholder="First Name" value="' + esc(p.firstName || "") + '"><input class="ckinp" id="pl" placeholder="Last Name" value="' + esc(p.lastName || "") + '"></div>';
     h += '<input class="ckinp" id="pe" style="margin-top:10px" type="email" placeholder="Email Address" value="' + esc(p.email || "") + '">';
+    h += '<input class="ckinp" id="po" style="margin-top:10px" maxlength="100" placeholder="Organization / Hotel name (optional)" value="' + esc(p.organization || "") + '">';
     h += '<div class="ckrow" style="margin-top:10px"><span class="ckpre">🇮🇳 +91</span><input class="ckinp" value="' + esc(mob10()) + '" disabled></div>';
     h += '<div class="cklbl">Date of Birth</div>';
     h += '<div class="ckrow"><select class="ckinp" id="pm">' + opts(mm, cm, "MM") + '</select><select class="ckinp" id="pd">' + opts(dd, cd, "DD") + '</select><select class="ckinp" id="py">' + opts(yy, cy, "YYYY") + "</select></div>";
@@ -453,7 +454,7 @@
   async function saveProfileForm() {
     var g = function (id) { var e = smsBox.querySelector("#" + id); return e ? e.value : ""; };
     var mm = g("pm"), dd = g("pd"), yy = g("py"), dob = (yy && mm && dd) ? yy + "-" + mm + "-" + dd : "";
-    var body = { title: g("pt"), firstName: g("pf"), lastName: g("pl"), email: g("pe"), dob: dob };
+    var body = { title: g("pt"), firstName: g("pf"), lastName: g("pl"), email: g("pe"), organization: g("po"), dob: dob };
     st.err = "";
     try {
       var r = await fetch("/api/user/profile", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body) });

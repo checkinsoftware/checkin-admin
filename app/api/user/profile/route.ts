@@ -28,17 +28,19 @@ export async function POST(req: Request) {
   const last = s(b.lastName);
   const email = s(b.email, 120);
   const dob = s(b.dob, 12);
+  const organization = s(b.organization, 100); // free text, optional, may repeat across guests
   // Prefer an explicit "name", else build it from first + last.
   const name = s(b.name) || [first, last].filter(Boolean).join(" ");
 
   try {
     await query(
-      `INSERT INTO app_users (mobile, name, title, first_name, last_name, email, dob, last_login_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+      `INSERT INTO app_users (mobile, name, title, first_name, last_name, email, dob, organization, last_login_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
        ON CONFLICT (mobile) DO UPDATE SET
          name = EXCLUDED.name, title = EXCLUDED.title, first_name = EXCLUDED.first_name,
-         last_name = EXCLUDED.last_name, email = EXCLUDED.email, dob = EXCLUDED.dob`,
-      [session.mobile, name || null, title || null, first || null, last || null, email || null, dob || null]
+         last_name = EXCLUDED.last_name, email = EXCLUDED.email, dob = EXCLUDED.dob,
+         organization = EXCLUDED.organization`,
+      [session.mobile, name || null, title || null, first || null, last || null, email || null, dob || null, organization || null]
     );
     return NextResponse.json({ ok: true, name });
   } catch {

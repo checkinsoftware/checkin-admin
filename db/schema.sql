@@ -159,3 +159,19 @@ CREATE TABLE IF NOT EXISTS build_entries (
 
 CREATE INDEX IF NOT EXISTS build_entries_project_idx ON build_entries (project_id);
 CREATE INDEX IF NOT EXISTS build_entries_date_idx    ON build_entries (entry_date DESC);
+
+-- Which hotel / company the number belongs to. Free text: several owners can share one.
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS organization TEXT;
+
+-- Sign-in / sign-out history per guest number.
+CREATE TABLE IF NOT EXISTS user_activity (
+  id         BIGSERIAL PRIMARY KEY,
+  mobile     TEXT        NOT NULL,
+  event      TEXT        NOT NULL,   -- login | logout | created
+  method     TEXT,                   -- otp | password | magic_link | admin
+  ip         TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS user_activity_mobile_idx ON user_activity (mobile, created_at DESC);

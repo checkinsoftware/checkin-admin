@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
 import { normaliseMobile } from "@/lib/sms-insert";
 import { createUserToken, USER_COOKIE, userCookieMaxAge } from "@/lib/user-auth";
@@ -44,6 +45,8 @@ export async function POST(req: Request) {
      ON CONFLICT (mobile) DO UPDATE SET last_login_at = NOW()`,
     [mobile]
   );
+
+  await logActivity(mobile, "login", "otp", req);
 
   const res = NextResponse.json({ ok: true, mobile });
   res.cookies.set(USER_COOKIE, await createUserToken(mobile), {

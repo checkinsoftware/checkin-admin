@@ -6,11 +6,14 @@ export function StatCard({
   value,
   hint,
   tone = "default",
+  href,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   tone?: "default" | "good" | "bad" | "warn";
+  /** Makes the card a link (e.g. to the SMS list filtered by this status). */
+  href?: string;
 }) {
   const tones: Record<string, string> = {
     default: "text-slate-900",
@@ -18,12 +21,20 @@ export function StatCard({
     bad: "text-red-600",
     warn: "text-amber-600",
   };
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+  const body = (
+    <>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className={`mt-1 text-2xl font-semibold ${tones[tone]}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
-    </div>
+    </>
+  );
+  const box = "rounded-xl border border-slate-200 bg-white p-4";
+  return href ? (
+    <a href={href} className={`${box} block transition hover:border-indigo-300 hover:shadow-sm`}>
+      {body}
+    </a>
+  ) : (
+    <div className={box}>{body}</div>
   );
 }
 

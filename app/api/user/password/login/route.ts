@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logActivity } from "@/lib/activity";
 import { hasDatabase, query } from "@/lib/db";
 import { normaliseMobile } from "@/lib/sms-insert";
 import { verifyPassword } from "@/lib/password";
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
   }
 
   await query(`UPDATE app_users SET last_login_at = NOW() WHERE mobile = $1`, [mobile]);
+
+  await logActivity(mobile, "login", "password", req);
 
   const res = NextResponse.json({ ok: true, mobile });
   res.cookies.set(USER_COOKIE, await createUserToken(mobile), {

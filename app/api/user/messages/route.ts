@@ -44,8 +44,8 @@ export async function GET(req: Request) {
     }
     let profile = {};
     try {
-      const u = await query<{ name: string | null; title: string | null; first_name: string | null; last_name: string | null; email: string | null; dob: string | null }>(
-        `SELECT name, title, first_name, last_name, email, dob FROM app_users WHERE mobile = $1 LIMIT 1`,
+      const u = await query<{ name: string | null; title: string | null; first_name: string | null; last_name: string | null; email: string | null; dob: string | null; organization: string | null }>(
+        `SELECT name, title, first_name, last_name, email, dob, organization FROM app_users WHERE mobile = $1 LIMIT 1`,
         [session.mobile]
       );
       const p = u[0] || {};
@@ -56,6 +56,7 @@ export async function GET(req: Request) {
         lastName: p.last_name ?? "",
         email: p.email ?? "",
         dob: p.dob ?? "",
+        organization: p.organization ?? "",
       };
     } catch {
       name = "";

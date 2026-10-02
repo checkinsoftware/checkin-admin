@@ -17,7 +17,14 @@ export type SmsRowDTO = {
   sent_at: string | null;
 };
 
-export type GuestDTO = { joined: string; devices: number; installed: boolean };
+export type GuestDTO = {
+  joined: string;
+  devices: number;
+  installed: boolean;
+  name: string | null;
+  email: string | null;
+  organization: string | null;
+};
 
 type Props = {
   initialRows: SmsRowDTO[];
@@ -46,14 +53,23 @@ function Pills({ row }: { row: SmsRowDTO }) {
   );
 }
 
-function Mobile({ row, guest }: { row: SmsRowDTO; guest: GuestDTO | undefined }) {
+function Mobile({ row, guest, isHotel }: { row: SmsRowDTO; guest: GuestDTO | undefined; isHotel: boolean }) {
+  const who = guest?.name || row.guest_name;
   return (
     <>
       <div>
         {guest?.installed && <img src="/icon-192.png" alt="" className="gicon" title="Installed app" />}
-        {row.recipient}
+        {guest && !isHotel ? (
+          <a href={`/mng-x7k9/webusers/${encodeURIComponent(row.recipient)}`} title="Open activity" style={{ color: "inherit" }}>
+            {row.recipient}
+          </a>
+        ) : (
+          row.recipient
+        )}
       </div>
-      {row.guest_name && <div className="dim">{row.guest_name}</div>}
+      {who && <div style={{ fontWeight: 600 }}>{who}</div>}
+      {guest?.organization && <div className="dim">{guest.organization}</div>}
+      {guest?.email && <div className="dim" style={{ wordBreak: "break-all" }}>{guest.email}</div>}
       {guest ? (
         <>
           <div className="gmeta">
@@ -154,7 +170,7 @@ export default function SmsList({ initialRows, initialGuests, initialPages, quer
           <thead>
             <tr>
               <th style={{ width: 55 }}>S.No.</th>
-              <th style={{ width: 190 }}>Mobile No</th>
+              <th style={{ width: 220 }}>Mobile No</th>
               <th>SMS Text</th>
               <th style={{ width: 150 }}>Source IP</th>
               <th style={{ width: 150 }}>Created (IST)</th>
@@ -173,7 +189,7 @@ export default function SmsList({ initialRows, initialGuests, initialPages, quer
               <tr key={row.id}>
                 <td className="mono">{i + 1}</td>
                 <td className="mono">
-                  <Mobile row={row} guest={guests[row.recipient]} />
+                  <Mobile row={row} guest={guests[row.recipient]} isHotel={isHotel} />
                 </td>
                 <td className="sms-text">
                   <Pills row={row} />
@@ -203,7 +219,7 @@ export default function SmsList({ initialRows, initialGuests, initialPages, quer
               <Pills row={row} />
             </div>
             <div style={{ marginBottom: 8, fontSize: 13 }}>
-              <Mobile row={row} guest={guests[row.recipient]} />
+              <Mobile row={row} guest={guests[row.recipient]} isHotel={isHotel} />
             </div>
             <div className="txt">{row.message}</div>
             {row.error && <div style={{ color: "#c0392b", fontSize: 12, marginTop: 6 }}>⚠ {row.error}</div>}

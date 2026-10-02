@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { DbNotReady, listSms } from "@/lib/sms";
+import { DbNotReady, guestInfo, listSms } from "@/lib/sms";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { formatDate, SetupNotice, StatCard, StatusBadge } from "@/components/ui";
 
@@ -29,6 +29,7 @@ export default async function DashboardPage() {
   }
 
   const { stats, rows } = data;
+  const guests = await guestInfo(rows.map((r) => r.recipient)).catch(() => ({}) as Awaited<ReturnType<typeof guestInfo>>);
   const rate = stats.total ? Math.round((stats.delivered / stats.total) * 100) : 0;
 
   return (
@@ -39,10 +40,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total SMS" value={stats.total} />
-        <StatCard label="Delivered" value={stats.delivered} tone="good" hint={`${rate}% delivery rate`} />
-        <StatCard label="Pending" value={stats.pending} tone="warn" hint="queued or sent" />
-        <StatCard label="Failed" value={stats.failed} tone="bad" />
+        <StatCard label="Total SMS" value={stats.total} href="/mng-x7k9/sms" />
+        <StatCard label="Delivered" value={stats.delivered} tone="good" hint={`${rate}% delivery rate`} href="/mng-x7k9/sms?status=delivered" />
+        <StatCard label="Pending" value={stats.pending} tone="warn" hint="queued or sent" href="/mng-x7k9/sms?status=pending" />
+        <StatCard label="Failed" value={stats.failed} tone="bad" href="/mng-x7k9/sms?status=failed" />
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-white">
@@ -56,13 +57,18 @@ export default async function DashboardPage() {
           {rows.length === 0 && (
             <li className="px-4 py-6 text-sm text-slate-500">No messages yet.</li>
           )}
-          {rows.map((row) => (
+          {rows.map((row) => {
+            const g = guests[row.recipient];
+            const who = g?.name || row.guest_name || "Unknown";
+            const extra = [g?.organization, g?.email].filter(Boolean).join(" · ");
+            return (
             <li key={row.id} className="flex items-start gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">
-                  {row.guest_name || "Unknown"}{" "}
+                  {who}{" "}
                   <span className="font-normal text-slate-400">· {row.recipient}</span>
                 </p>
+                {extra && <p className="text-xs text-slate-400">{extra}</p>}
                 <p className="truncate text-sm text-slate-500">{row.message}</p>
               </div>
               <div className="shrink-0 text-right">
@@ -70,7 +76,8 @@ export default async function DashboardPage() {
                 <p className="mt-1 text-xs text-slate-400">{formatDate(row.created_at)}</p>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
     </div>

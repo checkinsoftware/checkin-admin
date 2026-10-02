@@ -94,7 +94,7 @@ export default async function SmsListPage({
     sent_at: r.sent_at ? new Date(r.sent_at).toISOString() : null,
   }));
   const listGuests = Object.fromEntries(
-    Object.entries(guests).map(([m, g]) => [m, { joined: new Date(g.joined).toISOString(), devices: g.devices, installed: g.installed }])
+    Object.entries(guests).map(([m, g]) => [m, { ...g, joined: new Date(g.joined).toISOString() }])
   );
 
   return (

@@ -198,31 +198,41 @@ export type GuestInfo = {
   devices: number;
   /** A device on this number was registered from the installed app, not a browser tab. */
   installed: boolean;
+  name: string | null;
+  email: string | null;
+  /** Hotel / company the number belongs to (free text, may repeat). */
+  organization: string | null;
 };
 
-/** Account / push status for a set of numbers; numbers that never logged in are absent. */
+/** Account, profile and push status for a set of numbers; numbers that never logged in are absent. */
 export async function guestInfo(mobiles: string[]): Promise<Record<string, GuestInfo>> {
   const list = Array.from(new Set(mobiles.filter(Boolean)));
   if (!list.length) return {};
-  const sql = (installedExpr: string) =>
-    `SELECT u.mobile, u.created_at AS joined, COALESCE(d.n, 0)::int AS devices, ${installedExpr} AS installed
-     FROM app_users u
-     LEFT JOIN (
-       SELECT mobile, COUNT(*) AS n ${installedExpr === "FALSE" ? "" : ", bool_or(installed) AS inst"}
-       FROM device_tokens WHERE mobile = ANY($1) GROUP BY mobile
-     ) d ON d.mobile = u.mobile
-     WHERE u.mobile = ANY($1)`;
-  type Row = { mobile: string; joined: Date; devices: number; installed: boolean };
+  type Row = GuestInfo & { mobile: string };
+  const full = `SELECT u.mobile, u.created_at AS joined, u.name, u.email, u.organization,
+           COALESCE(d.n, 0)::int AS devices, COALESCE(d.inst, FALSE) AS installed
+    FROM app_users u
+    LEFT JOIN (
+      SELECT mobile, COUNT(*) AS n, bool_or(installed) AS inst
+      FROM device_tokens WHERE mobile = ANY($1) GROUP BY mobile
+    ) d ON d.mobile = u.mobile
+    WHERE u.mobile = ANY($1)`;
+  // Same shape before the installed/organization columns are migrated.
+  const basic = `SELECT u.mobile, u.created_at AS joined, u.name, u.email, NULL::text AS organization,
+           COALESCE(d.n, 0)::int AS devices, FALSE AS installed
+    FROM app_users u
+    LEFT JOIN (
+      SELECT mobile, COUNT(*) AS n FROM device_tokens WHERE mobile = ANY($1) GROUP BY mobile
+    ) d ON d.mobile = u.mobile
+    WHERE u.mobile = ANY($1)`;
   let rows: Row[];
   try {
-    rows = await query<Row>(sql("COALESCE(d.inst, FALSE)"), [list]);
+    rows = await query<Row>(full, [list]);
   } catch (err) {
-    if ((err as { code?: string }).code !== "42703") throw err; // installed column not migrated yet
-    rows = await query<Row>(sql("FALSE"), [list]);
+    if ((err as { code?: string }).code !== "42703") throw err;
+    rows = await query<Row>(basic, [list]);
   }
-  return Object.fromEntries(
-    rows.map((r) => [r.mobile, { joined: r.joined, devices: r.devices, installed: r.installed }])
-  );
+  return Object.fromEntries(rows.map(({ mobile, ...info }) => [mobile, info]));
 }
 
 /** Distinct hotel tags actually present in messages (best-effort, for super-admin filter). */
