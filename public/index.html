@@ -33,6 +33,15 @@
   .btn{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--body);font-weight:600;font-size:.98rem;padding:.85rem 1.5rem;border-radius:999px;border:1.5px solid transparent;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
   .btn-gold{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#3a1e05;box-shadow:0 10px 24px -12px rgba(224,149,42,.8)}
   .btn-gold:hover{transform:translateY(-2px);box-shadow:0 16px 30px -12px rgba(224,149,42,.9)}
+  .install-btn{display:flex;align-items:center;gap:12px;width:100%;max-width:420px;padding:10px 14px 10px 10px;margin:22px 0 14px;border-radius:16px;border:1px solid rgba(241,203,134,.55);background:rgba(251,244,232,.08);color:#fff;font:inherit;text-align:left;cursor:pointer;transition:background .15s,transform .15s}
+  .install-btn:hover{background:rgba(251,244,232,.16);transform:translateY(-1px)}
+  .install-btn[hidden]{display:none}
+  .install-btn img{width:40px;height:40px;border-radius:11px;flex:none}
+  .install-btn .t{flex:1;min-width:0}
+  .install-btn .t b{display:block;font-size:.95rem;font-weight:700}
+  .install-btn .t span{display:block;font-size:.76rem;color:#F1CB86;margin-top:1px}
+  .install-btn .dl{width:34px;height:34px;border-radius:50%;background:var(--gold);color:#3a1e05;display:grid;place-items:center;flex:none}
+  .install-btn .dl svg{width:18px;height:18px}
   .btn-ghost{border-color:rgba(255,255,255,.4);color:#fff}
   .btn-ghost:hover{background:rgba(255,255,255,.12);transform:translateY(-2px)}
   .btn-line{border-color:var(--gold);color:var(--maroon)}
@@ -188,6 +197,10 @@
   @media(max-width:820px){
     html{scroll-padding-top:64px}
     .menu-btn,.mcall{display:inline-flex}
+    .mcall{width:auto;height:40px;padding:0 15px 0 12px;gap:7px;border-radius:999px;font-weight:700;font-size:.85rem;box-shadow:0 4px 12px rgba(224,149,42,.45)}
+    .mcall svg{width:18px;height:18px}
+    .menu-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--maroon);color:#F1CB86;box-shadow:0 4px 12px rgba(94,27,34,.35)}
+    .menu-btn svg{width:22px;height:22px}
     .hcall{display:none}
     .topbar{padding:10px 0}
     nav.main{position:fixed;top:0;right:0;height:100vh;width:248px;max-width:82vw;background:linear-gradient(180deg,#fff,#fbf4e8);border-left:3px solid var(--gold);box-shadow:-14px 0 44px rgba(43,16,22,.28);border-radius:18px 0 0 18px;transform:translateX(340px);transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:40;display:block;overflow-y:auto;padding:60px 0 14px}
@@ -238,8 +251,8 @@
         <span class="lbl">Call us</span>
         <span class="num">+91-93514-49441&nbsp;&nbsp;/&nbsp;&nbsp;93514-49448</span>
       </div>
-      <a href="tel:+919351449441" class="mcall" aria-label="Call CHECKIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></a>
-      <button class="menu-btn" type="button" aria-label="Toggle menu" aria-expanded="false" onclick="toggleNav(this)"><svg class="bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <a href="tel:+919351449441" class="mcall" aria-label="Call CHECKIN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span>Call</span></a>
+      <button class="menu-btn" type="button" aria-label="Toggle menu" aria-expanded="false" onclick="toggleNav(this)"><svg class="bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg><svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
   </div>
   <nav class="main">
@@ -263,6 +276,11 @@
         <p class="eyebrow">Hotel management software</p>
         <h1>Run your entire hotel from <span class="em">one</span> golden screen.</h1>
         <p class="lead">CHECKIN handles front office, restaurant, housekeeping, retail and accounts together — simple enough that no computer training is needed.</p>
+        <button type="button" class="install-btn" id="ck-hero-install" hidden onclick="window.ckInstall&&window.ckInstall()">
+          <img src="/icon-192.png" alt="">
+          <span class="t"><b>Install Application</b><span>Add CHECKIN to your home screen</span></span>
+          <span class="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span>
+        </button>
         <div class="cta">
           <a href="#contact" class="btn btn-gold">Request a free demo</a>
           <a href="#modules" class="btn btn-ghost">Explore modules</a>

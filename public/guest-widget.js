@@ -37,17 +37,16 @@
     ".ckinfo{background:#FBF4E8;color:#7a4d0a;border:1px solid #F1CB86;border-radius:10px;padding:8px 12px;font-size:14px;margin-top:10px}" +
     ".cklbl{font-size:13px;font-weight:700;color:#5E1B22;margin:14px 2px 6px}" +
     /* auto-shown "install this app" banner, top of page */
-    "#ck-install{position:fixed;left:10px;right:10px;top:10px;z-index:1200;display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid #E7D9BF;border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(67,16,22,.2);max-width:440px;margin:0 auto}" +
+    "#ck-install{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(20,6,8,.62)}" +
     "#ck-install[hidden]{display:none}" +
-    "#ck-install .top{display:flex;align-items:center;gap:12px}" +
-    "#ck-install img{width:42px;height:42px;border-radius:11px;flex:none}" +
-    "#ck-install .txt{flex:1;min-width:0}" +
-    "#ck-install .txt b{display:block;font-size:.9rem;color:#5E1B22;font-weight:800}" +
-    "#ck-install .txt span{display:block;font-size:.76rem;color:#7C6A55;margin-top:1px}" +
-    "#ck-install .x{border:none;background:none;color:#a08a6e;font-size:18px;cursor:pointer;padding:4px 6px;line-height:1;flex:none}" +
-    "#ck-install .btns{display:flex;align-items:center;justify-content:flex-end;gap:16px}" +
-    "#ck-install .go{border:none;border-radius:10px;padding:9px 18px;font-weight:700;font-size:.82rem;cursor:pointer;background:#E0952A;color:#431016}" +
-    "#ck-install .skip{border:none;background:none;color:#7C6A55;font-size:.8rem;font-weight:600;cursor:pointer;padding:9px 2px}" +
+    "#ck-install .box{position:relative;width:100%;max-width:400px;background:#fff;color:#2A1417;border-radius:22px;padding:0 20px 16px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
+    "#ck-install img{width:64px;height:64px;border-radius:17px;margin:-32px auto 12px;display:block;border:3px solid #fff;box-shadow:0 8px 20px rgba(67,16,22,.35)}" +
+    "#ck-install h3{font-size:1.2rem;margin:0 0 6px;color:#5E1B22;font-weight:800}" +
+    "#ck-install p{font-size:.86rem;line-height:1.45;color:#6b5a52;margin:0 0 16px}" +
+    "#ck-install .btns{display:flex;gap:10px}" +
+    "#ck-install .btns button{flex:1;border:none;border-radius:12px;padding:13px 10px;font-weight:700;font-size:.92rem;cursor:pointer}" +
+    "#ck-install .go{background:#E0952A;color:#431016}" +
+    "#ck-install .skip{background:#F4ECE0;color:#6b5a52}" +
     /* in-page SMS section */
     "#ck-sms{max-width:760px;margin:0 auto;padding:0 16px 84px;min-height:60vh}" +
     "#ck-bar{position:fixed;bottom:0;left:0;right:0;z-index:800;display:none;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E7D9BF;box-shadow:0 -4px 16px rgba(67,16,22,.08)}" +
@@ -218,7 +217,7 @@
       st.busy = false; closeLogin(); await refreshMe(); showSms("messages");
       if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
       else startPolling();
-      setTimeout(showInstallBanner, 600);
+      setTimeout(showInstallPrompt, 600);
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
   // Password login — the fallback when OTP delivery isn't available. Same
@@ -232,7 +231,7 @@
       st.busy = false; st.password = ""; closeLogin(); await refreshMe(); showSms("messages");
       if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
       else startPolling();
-      setTimeout(showInstallBanner, 600);
+      setTimeout(showInstallPrompt, 600);
     } catch (e) { st.err = "Network error."; st.busy = false; renderLogin(); }
   }
   async function logout() {
@@ -550,7 +549,7 @@
     try { if (localStorage.getItem("ck_installed") === "1") return true; } catch (e) {}
     try { return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; } catch (e) { return false; }
   }
-  function markInstalled() { try { localStorage.setItem("ck_installed", "1"); } catch (e) {} }
+  function markInstalled() { try { localStorage.setItem("ck_installed", "1"); } catch (e) {} syncInstallUi(); }
   // Add-to-Home-Screen: Android/Chrome uses the captured beforeinstallprompt;
   // iOS Safari has no such API, so we show the manual Share → Add steps.
   async function doInstall() {
@@ -561,7 +560,7 @@
         var choice = await st.installPrompt.userChoice;
         if (choice && choice.outcome === "accepted") markInstalled();
       } catch (e) {}
-      st.installPrompt = null; hideInstallBanner(false); injectMenu();
+      st.installPrompt = null; hideInstallPrompt(false); injectMenu();
     } else if (isIOS()) {
       alert("To install on iPhone: tap the Share button (⬆️) in Safari, then choose 'Add to Home Screen'.");
     } else {
@@ -569,32 +568,40 @@
     }
   }
   var installBox;
-  function installDismissed() { try { return sessionStorage.getItem("ck_install_x") === "1"; } catch (e) { return false; } }
-  function showInstallBanner() {
-    if (isStandalone() || installDismissed() || (installBox && !installBox.hidden)) return;
-    if (!st.installPrompt && !isIOS()) return; // no install path available on this browser
+  // Asked once right after a login; "No" is remembered for two weeks.
+  function installAsked() { try { var t = +localStorage.getItem("ck_install_no") || 0; return Date.now() - t < 14 * 864e5; } catch (e) { return false; } }
+  function showInstallPrompt() {
+    if (isStandalone() || installAsked() || (installBox && !installBox.hidden)) return;
+    if (!st.installPrompt && !isIOS()) return; // no install path on this browser
     if (!installBox) {
       installBox = elem(
-        '<div id="ck-install"><div class="top"><img src="/icon-192.png" alt=""><div class="txt"><b>Install Application</b><span>' +
-          (isIOS() ? "Share ⬆️ → Add to Home Screen" : "View messages right from your home screen") +
-          '</span></div><button class="x" data-a="x">✕</button></div><div class="btns">' +
-          (isIOS() ? "" : '<button class="go" data-a="go">Install</button>') +
-          '<button class="skip" data-a="x">Skip for now</button></div></div>'
+        '<div id="ck-install"><div class="box"><img src="/icon-192.png" alt="">' +
+          '<h3>Install CHECKIN?</h3><p>Open your hotel messages straight from your home screen, like any other app.</p>' +
+          '<div class="btns"><button class="skip" data-a="no">No, thanks</button><button class="go" data-a="yes">Yes, install</button></div></div></div>'
       );
       installBox.addEventListener("click", function (e) {
-        var t = e.target.closest("[data-a]"); if (!t) return;
-        if (t.getAttribute("data-a") === "go") doInstall();
-        hideInstallBanner(true);
+        var t = e.target.closest("[data-a]");
+        if (!t) { if (e.target === installBox) hideInstallPrompt(true); return; }
+        var yes = t.getAttribute("data-a") === "yes";
+        hideInstallPrompt(!yes);
+        if (yes) doInstall();
       });
       document.body.appendChild(installBox);
     }
     installBox.hidden = false;
   }
-  function hideInstallBanner(dismiss) {
+  function hideInstallPrompt(remember) {
     if (installBox) installBox.hidden = true;
-    if (dismiss) { try { sessionStorage.setItem("ck_install_x", "1"); } catch (e) {} }
+    if (remember) { try { localStorage.setItem("ck_install_no", String(Date.now())); } catch (e) {} }
   }
+  // The home-page hero button is only shown while the app isn't installed.
+  function syncInstallUi() {
+    var hb = document.getElementById("ck-hero-install");
+    if (hb) hb.hidden = isStandalone();
+  }
+  window.ckInstall = function () { doInstall(); };
   function injectMenu() {
+    syncInstallUi();
     var nav = document.querySelector("nav.main");
     var ul = nav ? nav.querySelector("ul") : null;
     if (!nav || !ul) return;
@@ -662,12 +669,9 @@
       if (!document.body.classList.contains("ck-sms-mode")) return;
       document.body.classList.toggle("ck-stuck", window.scrollY > 30);
     }, { passive: true });
-    // Capture the install prompt so the drawer can offer "Install Application".
-    // Only pop the floating banner for a guest who's already logged in --
-    // showInstallBanner() itself is also called right after a fresh login
-    // (see verify()/passwordLogin()) and below, once refreshMe() resolves.
-    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); if (st.loggedIn) showInstallBanner(); });
-    window.addEventListener("appinstalled", function () { markInstalled(); st.installPrompt = null; injectMenu(); hideInstallBanner(false); });
+    // Capture the install prompt for the hero button, the menu entry and the post-login popup.
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); st.installPrompt = e; injectMenu(); });
+    window.addEventListener("appinstalled", function () { markInstalled(); st.installPrompt = null; injectMenu(); hideInstallPrompt(false); });
     // Re-place the profile block (header vs drawer) when crossing the breakpoint.
     try { var mq = window.matchMedia("(min-width: 821px)"); (mq.addEventListener ? mq.addEventListener("change", injectMenu) : mq.addListener(injectMenu)); } catch (e) {}
     ov = elem('<div id="ckov"><div id="cksheet"></div></div>');
@@ -737,7 +741,6 @@
         // falls back to startPolling() itself if FCM isn't actually available.
         if (typeof Notification !== "undefined" && Notification.permission === "granted") askPush();
         else startPolling();
-        setTimeout(showInstallBanner, 1200);
       }
     });
   }
