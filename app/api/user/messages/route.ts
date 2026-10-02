@@ -1,10 +1,24 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { hasDatabase, query } from "@/lib/db";
-import { USER_COOKIE, verifyUserToken } from "@/lib/user-auth";
+import { createUserToken, USER_COOKIE, userCookieMaxAge, verifyUserToken } from "@/lib/user-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// A logged-in guest stays logged in until they tap Logout: every successful check
+// re-issues the cookie, so a year of inactivity is the only thing that can expire it.
+async function withFreshSession(body: object, mobile: string) {
+  const res = NextResponse.json(body);
+  res.cookies.set(USER_COOKIE, await createUserToken(mobile), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: userCookieMaxAge,
+  });
+  return res;
+}
 
 // Used by the on-site guest widget: is the visitor logged in, their total SMS
 // count, and their messages (optionally filtered to one date ?date=YYYY-MM-DD).
@@ -61,8 +75,8 @@ export async function GET(req: Request) {
     } catch {
       name = "";
     }
-    return NextResponse.json({ loggedIn: true, mobile: session.mobile, name, profile, total, messages });
+    return withFreshSession({ loggedIn: true, mobile: session.mobile, name, profile, total, messages }, session.mobile);
   }
 
-  return NextResponse.json({ loggedIn: true, mobile: session.mobile, name, total, messages });
+  return withFreshSession({ loggedIn: true, mobile: session.mobile, name, total, messages }, session.mobile);
 }

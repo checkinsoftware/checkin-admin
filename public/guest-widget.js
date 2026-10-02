@@ -168,16 +168,20 @@
   function openLogin() { renderLogin(); ov.classList.add("on"); }
   function closeLogin() { ov.classList.remove("on"); try { sessionStorage.setItem("ck_skip", "1"); } catch (e) {} }
 
+  // Resolves true only when the server actually answered; a failed request never logs anyone out.
   async function refreshMe() {
+    var answered = false;
     try {
       var url = API.me + (st.date ? "?date=" + encodeURIComponent(st.date) : "");
       var r = await fetch(url, { credentials: "same-origin" });
       var d = await r.json();
       st.loggedIn = !!d.loggedIn; st.mobile = d.mobile || ""; st.name = d.name || ""; st.messages = d.messages || []; st.total = d.total || 0; st.profile = d.profile || {};
-    } catch (e) { st.loggedIn = false; }
+      answered = true;
+    } catch (e) { /* offline or a server hiccup: say nothing about login, keep what we knew */ }
     if (fab) fab.textContent = st.loggedIn ? "My SMS" : "Login";
     injectMenu();
     checkNewSms();
+    return answered;
   }
   // Detect a newer SMS (only when not date-filtered) and pop a browser notification.
   function checkNewSms() {
@@ -205,7 +209,7 @@
     // so the message being jumped to is guaranteed to be in the list.
     if (st.date) {
       st.date = "";
-      refreshMe().then(function () {
+      refreshMe().then(function (answered) {
         if (document.body.classList.contains("ck-sms-mode")) renderSms(); else showSms("messages");
       });
     } else if (document.body.classList.contains("ck-sms-mode")) renderSms(); else showSms("messages");
@@ -810,7 +814,7 @@
       var welHotel = "", welOtp = "", welAlready = ""; try { var wlu = new URL(location.href); welHotel = wlu.searchParams.get("h") || ""; welOtp = wlu.searchParams.get("otp") || ""; welAlready = wlu.searchParams.get("already") || ""; } catch (e) {}
       if (onWelPath) { if (st.loggedIn) showWelcome(welHotel, welOtp, welAlready === "1"); else { if (marketMain) marketMain.hidden = false; document.body.classList.remove("ck-sms-mode"); openLogin(); } }
       else if (onSmsPath) { if (st.loggedIn) showSms("messages"); else { hideSms(); openLogin(); } }
-      else if (!st.loggedIn && !skipped) setTimeout(openLogin, 700);
+      else if (!st.loggedIn && !skipped && answered) setTimeout(openLogin, 700);
       if (st.loggedIn) {
         // Push-enabled guests don't need the poll loop running too — askPush()
         // falls back to startPolling() itself if FCM isn't actually available.
