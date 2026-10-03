@@ -65,14 +65,15 @@
     "#ck-sms .ttl .ttldate{font-weight:600;color:#A9660F}" +
     "#ck-sms .num{display:inline-flex;align-items:center;gap:5px;background:#FBF0DC;border:1px solid #E7D9BF;border-radius:999px;padding:4px 11px;font-size:.72rem;color:#5E1B22;font-weight:700;white-space:nowrap}" +
     "#ck-sms .num:before{content:'📱'}" +
-    "#ck-sms .filt{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}" +
-    "#ck-sms .dt{flex:1;min-width:150px;border:1px solid #E7D9BF;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#2C231B;outline:none}" +
-    "#ck-sms .rf{width:46px;height:46px;flex:none;border:none;border-radius:12px;background:#E0952A;color:#431016;font-size:18px;cursor:pointer}" +
-    "#ck-sms .clr{margin-left:auto;border:1.5px solid #E0952A;background:#fff;color:#8A4F08;font-size:.82rem;font-weight:700;cursor:pointer;padding:8px 13px;border-radius:10px;line-height:1.2;box-shadow:0 1px 0 rgba(224,149,42,.25)}" +
+    "#ck-sms .filt{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:nowrap}" +
+    "#ck-sms .dt{flex:1 1 0;min-width:0;box-sizing:border-box;height:42px;border:1px solid #E7D9BF;border-radius:12px;padding:0 8px;font-size:14px;background:#fff;color:#2C231B;outline:none}" +
+    "#ck-sms .fsz{flex:none;box-sizing:border-box;height:42px;appearance:none;-webkit-appearance:none;border:1px solid #E7D9BF;border-radius:12px;padding:0 22px 0 10px;font:inherit;font-size:13px;font-weight:700;color:#431016;cursor:pointer;outline:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 10 6%27%3E%3Cpath d=%27M1 1l4 4 4-4%27 fill=%27none%27 stroke=%27%238A4F08%27 stroke-width=%271.8%27 stroke-linecap=%27round%27/%3E%3C/svg%3E') no-repeat right 8px center/10px}" +
+    "#ck-sms .rf{width:42px;height:42px;flex:none;border:none;border-radius:12px;background:#E0952A;color:#431016;font-size:18px;cursor:pointer}" +
+    "#ck-sms .clr{flex:none;height:42px;border:1.5px solid #E0952A;background:#fff;color:#8A4F08;font-size:.82rem;font-weight:700;cursor:pointer;padding:0 11px;border-radius:10px;line-height:1.2;box-shadow:0 1px 0 rgba(224,149,42,.25)}" +
     "#ck-sms .clr:active{background:#FBF4E8}" +
     "#ck-sms .card{background:#fff;border:1px solid #ecdfc6;border-radius:10px;padding:9px 11px;margin-bottom:7px;transition:box-shadow .3s,border-color .3s,background .3s}" +
-    "#ck-sms .card p{margin:0;font-size:.86rem;color:#431016;line-height:1.4}" +
-    "#ck-sms .card small{display:block;color:#a08a6e;font-size:.72rem}" +
+    "#ck-sms .card p{margin:0;font-size:var(--ck-mp,14px);color:#431016;line-height:1.4}" +
+    "#ck-sms .card small{display:block;color:#a08a6e;font-size:var(--ck-dp,12px)}" +
     "#ck-sms .card .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}" +
     "#ck-sms .card .shr{border:none;background:none;color:#8A4F08;cursor:pointer;padding:6px 8px;margin:-6px -6px -6px 0;border-radius:8px;line-height:0}" +
     "#ck-sms .card .shr:active{background:#FBF4E8}" +
@@ -398,11 +399,21 @@
     document.body.classList.remove("ck-sms-mode");
     setPath("/");
   }
+  // SMS text size (8-16px), chosen from the dropdown beside the date and remembered on this device.
+  function getFs() { try { var v = parseInt(localStorage.getItem("ck_sms_fs"), 10); if (v >= 8 && v <= 16) return v; } catch (e) {} return 14; }
+  function applyFs() {
+    if (!smsBox) return;
+    var px = getFs();
+    smsBox.style.setProperty("--ck-mp", px + "px");
+    smsBox.style.setProperty("--ck-dp", Math.max(8, px - 2) + "px");
+  }
   function renderSms() {
     if (!smsBox) return;
     syncHeaderH(); // header shrinks in ck-sms-mode; keep the sticky offset in sync
     smsBox.innerHTML = st.view === "edit" ? editHtml() : pageHtml();
     var dt = smsBox.querySelector("#cksmsdate"); if (dt) dt.onchange = function () { st.date = this.value; refreshMe().then(renderSms); };
+    var fz = smsBox.querySelector("#cksmsfs"); if (fz) fz.onchange = function () { try { localStorage.setItem("ck_sms_fs", this.value); } catch (e) {} applyFs(); };
+    applyFs();
     if (st.hl && st.view !== "edit") {
       var hc = smsBox.querySelector(".card.hl");
       if (hc) {
@@ -420,7 +431,8 @@
     var dateSuffix = st.date ? ' <span class="ttldate">· ' + esc(dateLabel(st.date)) + "</span>" : "";
     var h = '<div class="sticktop">';
     h += '<div class="top"><span class="ttl">Total SMS - ' + count + dateSuffix + '</span><span class="num">+91 ' + esc(mob10()) + "</span></div>";
-    h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><button class="rf" data-a="refresh" title="Refresh">⟳</button>' + (st.date ? '<button class="clr" data-a="clear">✕ Clear Filters</button>' : "") + "</div>";
+    var fso = ""; for (var fp = 8; fp <= 16; fp++) fso += '<option value="' + fp + '"' + (fp === getFs() ? " selected" : "") + ">" + fp + "px</option>";
+    h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><select class="fsz" id="cksmsfs" aria-label="Text size">' + fso + '</select><button class="rf" data-a="refresh" title="Refresh">⟳</button>' + (st.date ? '<button class="clr" data-a="clear">Clear</button>' : "") + "</div>";
     h += "</div>";
     if (!st.messages.length) h += '<div class="empty">No SMS found.' + (st.date ? " (for this date)" : "") + "</div>";
     st.messages.forEach(function (m) {
