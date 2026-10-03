@@ -120,7 +120,7 @@ export default function UsersManager({
         <p className="text-sm font-medium text-slate-700">Add a new user</p>
         <p className="mt-1 text-sm text-slate-500">
           <strong>Hotel login:</strong> SMS tag me hotel ka tag daalo jaise{" "}
-          <code>@Arco Team</code> (bilkul waisa jaisा SMS text ke last me aata hai) — wo user sirf
+          <code>Arco Team</code> (@ lagana zaroori nahi; jo text SMS me aata hai wahi) — wo user sirf
           wahi SMS dekhega. <strong>Admin</strong> checkbox on karo to full admin (sab dikhega, tag
           nahi chahiye).
         </p>

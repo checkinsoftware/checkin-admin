@@ -23,20 +23,19 @@ export function validPassword(p: unknown): p is string {
   return typeof p === "string" && p.length >= 6 && p.length <= 200;
 }
 
-// A hotel tag is a "@Name…" string (e.g. "@Arco Team"). Blank = full admin.
+// A hotel tag is the text to look for in the SMS (e.g. "Arco Team" or "@Arco Team"). Blank = full admin.
 export function cleanTag(t: unknown): string | null {
   const s = typeof t === "string" ? t.trim() : "";
   return s ? s.slice(0, 60) : null;
 }
 
 // Validate a tag the user typed. Empty is allowed (full admin). A non-empty
-// tag MUST start with "@" and be at least 4 characters. Returns an error
-// message to show, or null when it's fine.
+// tag must be at least 4 characters (shorter ones would match almost every SMS);
+// a leading "@" is optional. Returns an error message to show, or null when fine.
 export function tagError(t: unknown): string | null {
   const s = typeof t === "string" ? t.trim() : "";
   if (!s) return null; // empty = full admin, OK
-  if (!s.startsWith("@")) return "Hotel tag @ se shuru hona chahiye (jaise @Arco Team).";
-  if (s.length < 4) return "Hotel tag kam se kam 4 character ka hona chahiye (jaise @Arco).";
+  if (s.length < 4) return "Hotel tag kam se kam 4 character ka hona chahiye (jaise Arco).";
   return null;
 }
 
