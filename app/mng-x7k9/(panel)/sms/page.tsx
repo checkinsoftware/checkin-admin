@@ -60,8 +60,11 @@ export default async function SmsListPage({
   let numbers: Awaited<ReturnType<typeof distinctNumbers>> = [];
   let hotels: string[] = [];
   try {
-    numbers = await distinctNumbers();
-    if (!isHotel) hotels = await hotelTagsFromUsers();
+    // The number list covers every guest of every hotel, so a hotel login never gets it.
+    if (!isHotel) {
+      numbers = await distinctNumbers();
+      hotels = await hotelTagsFromUsers();
+    }
   } catch {
     numbers = [];
   }
@@ -107,7 +110,7 @@ export default async function SmsListPage({
       </div>
 
       <Suspense fallback={null}>
-        <SmsFilters numbers={numbers} hotels={hotels} canDelete={!isHotel} />
+        <SmsFilters numbers={numbers} hotels={hotels} canDelete={!isHotel} showNumbers={!isHotel} />
       </Suspense>
 
       <div className="total">

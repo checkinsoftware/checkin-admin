@@ -9,10 +9,13 @@ export default function SmsFilters({
   numbers = [],
   hotels = [],
   canDelete = true,
+  showNumbers = true,
 }: {
   numbers?: NumberOpt[];
   hotels?: string[];
   canDelete?: boolean;
+  /** Off for hotel logins: the number list spans every hotel's guests. */
+  showNumbers?: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -104,15 +107,17 @@ export default function SmsFilters({
             ))}
           </select>
         )}
-        <select value={number} onChange={(e) => setNumber(e.target.value)} title="Filter by number">
-          <option value="">All numbers</option>
-          {numbers.map((n) => (
-            <option key={n.recipient} value={n.recipient}>
-              {n.recipient}
-              {n.guest_name ? ` — ${n.guest_name}` : ""} ({n.c})
-            </option>
-          ))}
-        </select>
+        {showNumbers && (
+          <select value={number} onChange={(e) => setNumber(e.target.value)} title="Filter by number">
+            <option value="">All numbers</option>
+            {numbers.map((n) => (
+              <option key={n.recipient} value={n.recipient}>
+                {n.recipient}
+                {n.guest_name ? ` — ${n.guest_name}` : ""} ({n.c})
+              </option>
+            ))}
+          </select>
+        )}
         <input
           type="text"
           placeholder="Search mobile number, SMS text, or status"
