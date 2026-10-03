@@ -78,6 +78,19 @@
     "#ck-sms .card .shr{border:none;background:none;color:#8A4F08;cursor:pointer;padding:6px 8px;margin:-6px -6px -6px 0;border-radius:8px;line-height:0}" +
     "#ck-sms .card .shr:active{background:#FBF4E8}" +
     "#ck-sms .card .shr svg{width:19px;height:19px}" +
+    "#ck-ios{position:fixed;inset:0;z-index:1400;display:flex;align-items:flex-end;justify-content:center;padding:14px 14px calc(14px + env(safe-area-inset-bottom));background:rgba(20,6,8,.62)}" +
+    "#ck-ios.safari{padding-bottom:calc(66px + env(safe-area-inset-bottom))}" +
+    "#ck-ios .box{position:relative;width:100%;max-width:400px;background:#fff;color:#2A1417;border-radius:22px;padding:0 18px 14px;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
+    "#ck-ios .box>img{width:58px;height:58px;border-radius:15px;margin:-29px auto 8px;display:block;border:3px solid #fff;box-shadow:0 8px 20px rgba(67,16,22,.35)}" +
+    "#ck-ios h3{margin:0 0 10px;font-size:1.1rem;color:#5E1B22;font-weight:800;text-align:center}" +
+    "#ck-ios ol{list-style:none;margin:0;padding:0;display:grid;gap:9px}" +
+    "#ck-ios li{display:flex;gap:10px;align-items:center;font-size:.86rem;line-height:1.35}" +
+    "#ck-ios .n{flex:none;width:24px;height:24px;border-radius:50%;background:#E0952A;color:#431016;font-weight:700;font-size:.78rem;display:grid;place-items:center}" +
+    "#ck-ios .shi{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#EEF2FF;color:#2563eb;vertical-align:-6px;margin:0 2px}" +
+    "#ck-ios .shi svg{width:15px;height:15px}" +
+    "#ck-ios .where{display:block;font-size:.74rem;color:#7C6A55;margin-top:1px}" +
+    "#ck-ios .ok{display:block;width:100%;margin-top:12px;border:none;border-radius:12px;padding:12px;font-weight:700;font-size:.92rem;background:#E0952A;color:#431016;cursor:pointer}" +
+    "#ck-ios .arr{position:absolute;color:#fff;font-size:1.5rem;line-height:1;pointer-events:none}" +
     "#ck-share{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(20,6,8,.55)}" +
     "#ck-share[hidden]{display:none}" +
     "#ck-share .box{width:100%;max-width:400px;background:#fff;color:#2A1417;border-radius:20px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.4)}" +
@@ -614,6 +627,31 @@
   function markInstalled() { try { localStorage.setItem("ck_installed", "1"); } catch (e) {} syncInstallUi(); }
   // Add-to-Home-Screen: Android/Chrome uses the captured beforeinstallprompt;
   // iOS Safari has no such API, so we show the manual Share → Add steps.
+  // iPhone has no one-tap install, so show the steps, naming the Share button where this browser keeps it.
+  function iosBrowser() {
+    var ua = navigator.userAgent || "";
+    if (/CriOS/i.test(ua)) return "chrome";
+    if (/EdgiOS|FxiOS|OPiOS/i.test(ua)) return "other";
+    return "safari";
+  }
+  var iosBox;
+  function showIosSteps() {
+    var b = iosBrowser();
+    var where = b === "chrome" ? "Top right, next to the address bar" : b === "safari" ? "At the bottom of the screen" : "In the browser menu";
+    var arrow = b === "chrome" ? '<div class="arr" style="right:16px;top:calc(env(safe-area-inset-top) + 46px)">▲</div>'
+      : b === "safari" ? '<div class="arr" style="left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%)">▼</div>' : "";
+    var share = '<span class="shi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>';
+    if (iosBox && iosBox.parentNode) iosBox.parentNode.removeChild(iosBox);
+    iosBox = elem('<div id="ck-ios" class="' + b + '"><div class="box"><img src="/icon-192.png" alt=""><h3>Install CHECKIN</h3><ol>' +
+      '<li><span class="n">1</span><span>Tap the Share button ' + share + '<span class="where">' + where + "</span></span></li>" +
+      '<li><span class="n">2</span><span>Scroll down and tap <b>Add to Home Screen</b></span></li>' +
+      '<li><span class="n">3</span><span>Tap <b>Add</b>' + (b === "safari" ? " in the top corner" : "") + "</span></li></ol>" +
+      '<button class="ok" type="button">Got it</button></div>' + arrow + "</div>");
+    iosBox.addEventListener("click", function (e) {
+      if (e.target === iosBox || e.target.closest(".ok")) { if (iosBox.parentNode) iosBox.parentNode.removeChild(iosBox); }
+    });
+    document.body.appendChild(iosBox);
+  }
   async function doInstall() {
     if (st.installPrompt) {
       closeSiteMenu();
@@ -624,7 +662,7 @@
       } catch (e) {}
       st.installPrompt = null; hideInstallPrompt(false); injectMenu();
     } else if (isIOS()) {
-      alert("To install on iPhone: tap the Share button (⬆️) in Safari, then choose 'Add to Home Screen'.");
+      closeSiteMenu(); showIosSteps();
     } else {
       alert("Use 'Install app' or 'Add to Home screen' from this browser's menu (⋮) to install.");
     }
