@@ -36,7 +36,8 @@ export default function UsersManager({
 
   // per-row edits
   const [editId, setEditId] = useState<string | null>(null);
-  const [editKind, setEditKind] = useState<"pw" | "tag">("pw");
+  const [editKind, setEditKind] = useState<"pw" | "role">("pw");
+  const [editAdmin, setEditAdmin] = useState(false);
   const [editVal, setEditVal] = useState("");
   const [rowMsg, setRowMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null);
 
@@ -67,16 +68,22 @@ export default function UsersManager({
     setBusy(false);
   }
 
-  function startEdit(id: string, kind: "pw" | "tag", current = "") {
+  function startEdit(id: string, kind: "pw" | "role", current = "") {
     setEditId(id);
     setEditKind(kind);
-    setEditVal(kind === "tag" ? current : "");
+    setEditVal(kind === "role" ? current : "");
+    setEditAdmin(kind === "role" && !current);
     setRowMsg(null);
   }
 
   async function saveEdit(id: string) {
     setRowMsg(null);
-    const body = editKind === "tag" ? { tag: editVal } : { password: editVal };
+    if (editKind === "role" && !editAdmin && !editVal.trim()) {
+      setRowMsg({ id, ok: false, text: "Hotel login needs an SMS tag, or tick Admin." });
+      return;
+    }
+    const body =
+      editKind === "role" ? { admin: editAdmin, tag: editAdmin ? "" : editVal } : { password: editVal };
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PATCH",
@@ -153,7 +160,7 @@ export default function UsersManager({
               className={`${input} ${isAdmin ? "bg-slate-100 text-slate-400" : ""}`}
               value={isAdmin ? "" : tag}
               onChange={(e) => setTag(e.target.value)}
-              placeholder="@Arco Team"
+              placeholder="Arco Team"
               autoComplete="off"
               disabled={isAdmin}
             />
@@ -219,13 +226,22 @@ export default function UsersManager({
                 <tr key={u.id}>
                   <td className="px-4 py-3 font-medium text-slate-800">{u.username}</td>
                   <td className="px-4 py-3">
-                    {editId === u.id && editKind === "tag" ? (
-                      <span className="flex items-center gap-2">
+                    {editId === u.id && editKind === "role" ? (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-1.5 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={editAdmin}
+                            onChange={(e) => setEditAdmin(e.target.checked)}
+                          />
+                          Admin
+                        </label>
                         <input
-                          className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                          value={editVal}
+                          className="rounded-lg border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                          value={editAdmin ? "" : editVal}
                           onChange={(e) => setEditVal(e.target.value)}
-                          placeholder="@Arco Team (blank = admin)"
+                          disabled={editAdmin}
+                          placeholder="Hotel tag, e.g. Arco Team"
                         />
                         <button
                           onClick={() => saveEdit(u.id)}
@@ -277,10 +293,10 @@ export default function UsersManager({
                       ) : (
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <button
-                            onClick={() => startEdit(u.id, "tag", u.sms_tag ?? "")}
+                            onClick={() => startEdit(u.id, "role", u.sms_tag ?? "")}
                             className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                           >
-                            Set tag
+                            Edit
                           </button>
                           <button
                             onClick={() => startEdit(u.id, "pw")}

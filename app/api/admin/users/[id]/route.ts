@@ -36,6 +36,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
+  // Edit sends admin:false when switching someone to a hotel login; that needs a tag.
+  if (body.admin === false && !String(body.tag ?? "").trim()) {
+    return NextResponse.json({ error: "Hotel login needs an SMS tag, or make the user an Admin." }, { status: 400 });
+  }
+
   // Set / clear the hotel SMS tag. Empty clears it (-> full admin). A non-empty
   // tag must be valid.
   if (Object.prototype.hasOwnProperty.call(body, "tag")) {
