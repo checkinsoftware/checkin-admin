@@ -399,8 +399,8 @@
     document.body.classList.remove("ck-sms-mode");
     setPath("/");
   }
-  // SMS text size (8-16px), chosen from the dropdown beside the date and remembered on this device.
-  function getFs() { try { var v = parseInt(localStorage.getItem("ck_sms_fs"), 10); if (v >= 8 && v <= 16) return v; } catch (e) {} return 14; }
+  // SMS text size (8-20px), chosen from the dropdown beside the date and remembered on this device.
+  function getFs() { try { var v = parseInt(localStorage.getItem("ck_sms_fs"), 10); if (v >= 8 && v <= 20) return v; } catch (e) {} return 14; }
   function applyFs() {
     if (!smsBox) return;
     var px = getFs();
@@ -411,7 +411,12 @@
     if (!smsBox) return;
     syncHeaderH(); // header shrinks in ck-sms-mode; keep the sticky offset in sync
     smsBox.innerHTML = st.view === "edit" ? editHtml() : pageHtml();
-    var dt = smsBox.querySelector("#cksmsdate"); if (dt) dt.onchange = function () { st.date = this.value; refreshMe().then(renderSms); };
+    var dt = smsBox.querySelector("#cksmsdate");
+    if (dt) {
+      dt.onchange = function () { st.date = this.value; refreshMe().then(renderSms); };
+      // Tapping anywhere in the box opens the calendar, not just the little icon.
+      dt.onclick = function () { try { this.showPicker(); } catch (e) {} };
+    }
     var fz = smsBox.querySelector("#cksmsfs"); if (fz) fz.onchange = function () { try { localStorage.setItem("ck_sms_fs", this.value); } catch (e) {} applyFs(); };
     applyFs();
     if (st.hl && st.view !== "edit") {
@@ -431,7 +436,7 @@
     var dateSuffix = st.date ? ' <span class="ttldate">· ' + esc(dateLabel(st.date)) + "</span>" : "";
     var h = '<div class="sticktop">';
     h += '<div class="top"><span class="ttl">Total SMS - ' + count + dateSuffix + '</span><span class="num">+91 ' + esc(mob10()) + "</span></div>";
-    var fso = ""; for (var fp = 8; fp <= 16; fp++) fso += '<option value="' + fp + '"' + (fp === getFs() ? " selected" : "") + ">" + fp + "px</option>";
+    var fso = ""; for (var fp = 8; fp <= 20; fp++) fso += '<option value="' + fp + '"' + (fp === getFs() ? " selected" : "") + ">" + fp + "px</option>";
     h += '<div class="filt"><input class="dt" type="date" id="cksmsdate" value="' + esc(st.date) + '"><select class="fsz" id="cksmsfs" aria-label="Text size">' + fso + '</select><button class="rf" data-a="refresh" title="Refresh">⟳</button>' + (st.date ? '<button class="clr" data-a="clear">Clear</button>' : "") + "</div>";
     h += "</div>";
     if (!st.messages.length) h += '<div class="empty">No SMS found.' + (st.date ? " (for this date)" : "") + "</div>";
