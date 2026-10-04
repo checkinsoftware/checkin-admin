@@ -53,6 +53,20 @@ export async function createProject(name: string, client: string): Promise<Build
   return rows[0];
 }
 
+export async function updateProject(id: string, name: string, client: string): Promise<BuildProject | null> {
+  const rows = await query<BuildProject>(
+    "UPDATE build_projects SET name=$2, client=$3 WHERE id=$1 RETURNING id::text AS id, name, COALESCE(client,'') AS client",
+    [id, name.trim().slice(0, 120), client.trim().slice(0, 120) || null]
+  );
+  return rows[0] ?? null;
+}
+
+// Hard delete — build_entries has ON DELETE CASCADE, so the project's entries
+// go with it. The UI confirms (and states the entry count) before calling this.
+export async function deleteProject(id: string): Promise<void> {
+  await query("DELETE FROM build_projects WHERE id = $1", [id]);
+}
+
 const ENTRY_COLS =
   "id::text AS id, project_id::text AS \"projectId\", kind, COALESCE(category,'') AS category, amount::float8 AS amount, to_char(entry_date,'YYYY-MM-DD') AS date, COALESCE(party,'') AS party, COALESCE(note,'') AS note, user_name AS \"user\"";
 

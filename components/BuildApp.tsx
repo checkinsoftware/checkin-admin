@@ -47,13 +47,31 @@ function byCat(list: Entry[], kind: Kind): [string, number][] {
   for (const e of list) if (e.kind === kind) { const k = e.category || "Other"; m[k] = (m[k] || 0) + e.amount; }
   return Object.entries(m).sort((a, b) => b[1] - a[1]);
 }
+function csvCell(s: string | number) {
+  const v = String(s ?? "");
+  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function downloadText(filename: string, text: string, type = "text/csv;charset=utf-8") {
+  try {
+    const blob = new Blob(["﻿" + text], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch { /* ignore */ }
+}
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 type View = { name: "projects" } | { name: "project"; id: string } | { name: "report"; pid?: string };
 type SheetState =
   | { kind: "entry"; type: Kind; projectId: string; editId?: string }
   | { kind: "project" }
+  | { kind: "editProject"; id: string }
   | { kind: "user" }
   | null;
+
+const KIND_WORD: Record<Kind, string> = { IN: "Payment", MAT: "Material", LAB: "Labour" };
 
 export default function BuildApp({ meName }: { meName: string }) {
   const router = useRouter();
@@ -101,7 +119,7 @@ export default function BuildApp({ meName }: { meName: string }) {
     <div className="bk">
       <style>{BK_CSS}</style>
       <div className="app">
-        <Header view={view} setView={setView} meName={meName} openUser={() => setSheet({ kind: "user" })} projects={projects} />
+        <Header view={view} setView={setView} meName={meName} openUser={() => setSheet({ kind: "user" })} projects={projects} editProject={(id) => setSheet({ kind: "editProject", id })} />
         <main>
           {loadErr && <div className="empty" style={{ color: "var(--out)" }}>{loadErr}</div>}
           {view.name === "projects" && (
@@ -126,6 +144,15 @@ export default function BuildApp({ meName }: { meName: string }) {
 
       {sheet?.kind === "user" && <UserSheet meName={meName} onClose={() => setSheet(null)} onLogout={logout} />}
       {sheet?.kind === "project" && <ProjectSheet onClose={() => setSheet(null)} onSaved={(p) => { setProjects((x) => [...x, p]); setSheet(null); setView({ name: "project", id: p.id }); }} />}
+      {sheet?.kind === "editProject" && (
+        <ProjectEditSheet
+          project={projects.find((p) => p.id === sheet.id)}
+          entryCount={entries.filter((e) => e.projectId === sheet.id).length}
+          onClose={() => setSheet(null)}
+          onSaved={(p) => { setProjects((x) => x.map((q) => (q.id === p.id ? p : q))); setSheet(null); }}
+          onDeleted={(id) => { setProjects((x) => x.filter((q) => q.id !== id)); setEntries((x) => x.filter((e) => e.projectId !== id)); setSheet(null); setView({ name: "projects" }); }}
+        />
+      )}
       {sheet?.kind === "entry" && (
         <EntrySheet
           sheet={sheet}
@@ -139,7 +166,7 @@ export default function BuildApp({ meName }: { meName: string }) {
   );
 }
 
-function Header({ view, setView, meName, openUser, projects }: { view: View; setView: (v: View) => void; meName: string; openUser: () => void; projects: Project[] }) {
+function Header({ view, setView, meName, openUser, projects, editProject }: { view: View; setView: (v: View) => void; meName: string; openUser: () => void; projects: Project[]; editProject: (id: string) => void }) {
   if (view.name === "project") {
     const p = projects.find((x) => x.id === view.id);
     return (
@@ -149,6 +176,7 @@ function Header({ view, setView, meName, openUser, projects }: { view: View; set
           <div className="htitle">{p?.name}</div>
           <div className="sub">{p?.client}</div>
         </div>
+        <button className="hbtn" aria-label="Edit project" onClick={() => editProject(view.id)}>✎</button>
       </header>
     );
   }
@@ -276,35 +304,135 @@ function ProjectView({ project, list, openEntry }: { project?: Project; list: En
 }
 
 function ReportView({ projects, entries, pid, setPid, entriesOf }: { projects: Project[]; entries: Entry[]; pid: string; setPid: (p: string) => void; entriesOf: (id?: string) => Entry[] }) {
-  const list = entriesOf(pid || undefined);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const projName = useMemo(() => { const m: Record<string, string> = {}; projects.forEach((p) => (m[p.id] = p.name)); return m; }, [projects]);
+
+  const list = useMemo(() => {
+    let l = entriesOf(pid || undefined);
+    if (from) l = l.filter((e) => e.date >= from);
+    if (to) l = l.filter((e) => e.date <= to);
+    return l;
+  }, [entriesOf, pid, from, to]);
+
+  const sorted = useMemo(() => [...list].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [list]);
   const t = totals(list);
   const um: Record<string, { inn: number; exp: number }> = {};
   for (const e of list) { um[e.user] = um[e.user] || { inn: 0, exp: 0 }; if (e.kind === "IN") um[e.user].inn += e.amount; else um[e.user].exp += e.amount; }
   const urows = Object.entries(um).sort((a, b) => (b[1].inn + b[1].exp) - (a[1].inn + a[1].exp));
+
+  const scopeName = pid ? (projName[pid] || "Project") : "All projects";
+  const rangeText = from || to ? `${from ? fmtDate(from) : "start"} – ${to ? fmtDate(to) : "today"}` : "All dates";
+
+  function quick(kind: "month" | "all") {
+    if (kind === "all") { setFrom(""); setTo(""); return; }
+    const d = new Date(); const y = d.getFullYear(), m = d.getMonth();
+    setFrom(new Date(y, m, 1).toLocaleDateString("en-CA"));
+    setTo(todayISO());
+  }
+  function exportCSV() {
+    const head = ["Date", "Type", "Category", "Party", "Note", "Amount", "By user", "Project"];
+    const lines = [head.join(",")];
+    for (const e of sorted) {
+      lines.push([csvCell(e.date), KIND_WORD[e.kind], csvCell(e.category), csvCell(e.party), csvCell(e.note),
+        (e.kind === "IN" ? "" : "-") + e.amount, csvCell(e.user), csvCell(projName[e.projectId] || "")].join(","));
+    }
+    lines.push("");
+    lines.push(["", "", "", "", "Received", t.inn].join(","));
+    lines.push(["", "", "", "", "Expense", t.exp].join(","));
+    lines.push(["", "", "", "", "Balance", t.bal].join(","));
+    downloadText(`BuildKhata_${scopeName.replace(/[^\w]+/g, "_")}.csv`, lines.join("\n"));
+  }
+
   return (
     <>
-      <div className="field" style={{ marginTop: 0 }}>
-        <label>Filter by project</label>
-        <select value={pid} onChange={(e) => setPid(e.target.value)}>
-          <option value="">All projects</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+      <div className="screen-only" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="field" style={{ marginTop: 0 }}>
+          <label>Project</label>
+          <select value={pid} onChange={(e) => setPid(e.target.value)}>
+            <option value="">All projects</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+        <div className="grid2">
+          <div className="field" style={{ marginTop: 0 }}><label>From date</label><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div className="field" style={{ marginTop: 0 }}><label>To date</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="pill" onClick={() => quick("month")}>This month</button>
+          <button className="pill" onClick={() => quick("all")}>All dates</button>
+        </div>
+
+        <Hero label={`Balance · ${rangeText}`} bal={t.bal} inn={t.inn} exp={t.exp} mat={t.mat} lab={t.lab} />
+        <CatCard title="Material — category-wise total" list={list} kind="MAT" tot={t.mat} />
+        <CatCard title="Labour — category-wise total" list={list} kind="LAB" tot={t.lab} />
+        <div className="card cpad">
+          <div className="eyebrow" style={{ marginBottom: 4 }}>Entries by user</div>
+          {urows.map(([u, v]) => (
+            <div className="catrow" key={u}>
+              <span className="ava">{u[0]}</span>
+              <span className="nm">{u}</span>
+              <span style={{ fontSize: 12, color: "var(--in-ink)" }}>+{money0(v.inn)}</span>
+              <span className="amt tnum" style={{ color: "var(--out)" }}>−{money0(v.exp)}</span>
+            </div>
+          ))}
+          {!urows.length && <div className="empty">No entries in this range.</div>}
+        </div>
+
+        <div className="srow" style={{ marginTop: 0 }}>
+          <button className="btn ghost" onClick={exportCSV}>⬇ CSV</button>
+          <button className="btn primary" onClick={() => window.print()}>🖨 Print / Share PDF</button>
+        </div>
+        <div className="faint" style={{ fontSize: 11.5, textAlign: "center", marginTop: -4 }}>Print par “Save as PDF” choose karke WhatsApp par bhej sakte ho.</div>
       </div>
-      <Hero label="Balance" bal={t.bal} inn={t.inn} exp={t.exp} mat={t.mat} lab={t.lab} />
-      <CatCard title="Material — category-wise total" list={list} kind="MAT" tot={t.mat} />
-      <CatCard title="Labour — category-wise total" list={list} kind="LAB" tot={t.lab} />
-      <div className="card cpad">
-        <div className="eyebrow" style={{ marginBottom: 4 }}>Entries by user</div>
-        {urows.map(([u, v]) => (
-          <div className="catrow" key={u}>
-            <span className="ava">{u[0]}</span>
-            <span className="nm">{u}</span>
-            <span style={{ fontSize: 12, color: "var(--in-ink)" }}>+{money0(v.inn)}</span>
-            <span className="amt tnum" style={{ color: "var(--out)" }}>−{money0(v.exp)}</span>
-          </div>
-        ))}
-        {!urows.length && <div className="empty">No entries.</div>}
+
+      <Statement scope={scopeName} range={rangeText} list={sorted} totals={t} projName={projName} />
+    </>
+  );
+}
+
+function Statement({ scope, range, list, totals: t, projName }: { scope: string; range: string; list: Entry[]; totals: ReturnType<typeof totals>; projName: Record<string, string> }) {
+  const mat = byCat(list, "MAT"), lab = byCat(list, "LAB");
+  return (
+    <div className="print-only stmt">
+      <div className="stmt-head">
+        <div className="stmt-title">BuildKhata — Statement</div>
+        <div className="stmt-meta">{scope} · {range}<br />Generated {fmtDate(todayISO())}</div>
       </div>
+      <table className="stmt-sum">
+        <tbody>
+          <tr><td>Payment received</td><td className="r">{money(t.inn)}</td></tr>
+          <tr><td>Material</td><td className="r">{money(t.mat)}</td></tr>
+          <tr><td>Labour</td><td className="r">{money(t.lab)}</td></tr>
+          <tr><td>Total expense</td><td className="r">{money(t.exp)}</td></tr>
+          <tr className="bold"><td>Balance</td><td className="r">{money(t.bal)}</td></tr>
+        </tbody>
+      </table>
+      {mat.length > 0 && <StmtCatTable title="Material by category" rows={mat} />}
+      {lab.length > 0 && <StmtCatTable title="Labour by category" rows={lab} />}
+      <div className="stmt-sec">All entries ({list.length})</div>
+      <table className="stmt-tbl">
+        <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Party</th><th className="r">Amount</th><th>By</th></tr></thead>
+        <tbody>
+          {list.map((e) => (
+            <tr key={e.id}>
+              <td>{fmtDate(e.date)}</td><td>{KIND_WORD[e.kind]}</td><td>{e.category}</td><td>{e.party}</td>
+              <td className="r">{e.kind === "IN" ? "" : "-"}{money0(e.amount)}</td><td>{e.user}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function StmtCatTable({ title, rows }: { title: string; rows: [string, number][] }) {
+  return (
+    <>
+      <div className="stmt-sec">{title}</div>
+      <table className="stmt-tbl">
+        <tbody>{rows.map((r) => <tr key={r[0]}><td>{r[0]}</td><td className="r">{money(r[1])}</td></tr>)}</tbody>
+      </table>
     </>
   );
 }
@@ -354,6 +482,62 @@ function ProjectSheet({ onClose, onSaved }: { onClose: () => void; onSaved: (p: 
         <button className="btn ghost" onClick={onClose}>Cancel</button>
         <button className="btn primary" onClick={save} disabled={busy}>{busy ? "Saving…" : "Create"}</button>
       </div>
+    </Scrim>
+  );
+}
+
+function ProjectEditSheet({ project, entryCount, onClose, onSaved, onDeleted }: { project?: Project; entryCount: number; onClose: () => void; onSaved: (p: Project) => void; onDeleted: (id: string) => void }) {
+  const [name, setName] = useState(project?.name || "");
+  const [client, setClient] = useState(project?.client || "");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  if (!project) return null;
+
+  async function save() {
+    if (!name.trim()) { setErr("Enter a project name."); return; }
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/build/project", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: project!.id, name, client }) });
+      const j = await r.json();
+      if (!r.ok) { setErr(j.error || "Could not save."); setBusy(false); return; }
+      onSaved(j.project);
+    } catch { setErr("Network error."); setBusy(false); }
+  }
+  async function del() {
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/build/project?id=" + project!.id, { method: "DELETE" });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setErr(j.error || "Could not delete."); setBusy(false); return; }
+      onDeleted(project!.id);
+    } catch { setErr("Network error."); setBusy(false); }
+  }
+
+  return (
+    <Scrim onClose={onClose}>
+      <div className="grab" />
+      <h2>Edit project</h2>
+      <div className="field"><label>Project name</label><input value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} placeholder="Project name" /></div>
+      <div className="field"><label>Client</label><input value={client} onChange={(e) => setClient(e.target.value)} placeholder="Owner / party name" /></div>
+      {err && <div className="err show">{err}</div>}
+      <div className="srow">
+        <button className="btn ghost" onClick={onClose}>Cancel</button>
+        <button className="btn primary" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+      </div>
+
+      {!confirmDel ? (
+        <button className="btn danger-full" style={{ width: "100%", marginTop: 10 }} onClick={() => setConfirmDel(true)}>🗑 Delete this project</button>
+      ) : (
+        <div className="delbox">
+          <div style={{ fontSize: 13, color: "var(--out-ink)", marginBottom: 10 }}>
+            Pakka delete karein? <strong>{project.name}</strong> aur iski <strong>{entryCount}</strong> entries hamesha ke liye hat jaayengi.
+          </div>
+          <div className="srow" style={{ marginTop: 0 }}>
+            <button className="btn ghost" onClick={() => setConfirmDel(false)} disabled={busy}>Rehne do</button>
+            <button className="btn danger-full" onClick={del} disabled={busy}>{busy ? "Deleting…" : "Haan, delete karo"}</button>
+          </div>
+        </div>
+      )}
     </Scrim>
   );
 }
@@ -513,4 +697,24 @@ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:
 .bk .btn:active{transform:scale(.98)}
 .bk .btn:disabled{opacity:.6}
 .bk .demo{font-size:11.5px;color:var(--faint);text-align:center;padding:8px 0 2px}
+.bk .delbox{margin-top:12px;padding:12px 14px;border:1px solid var(--out-soft);background:var(--out-soft);border-radius:12px}
+.bk .print-only{display:none}
+@media print{
+  .bk header,.bk nav.tabs,.bk .screen-only,.bk .scrim{display:none!important}
+  .bk main{padding:0!important}
+  .bk .app{min-height:0!important;background:#fff!important}
+  .bk .print-only{display:block!important}
+}
+.bk .stmt{color:#1a1a1a;font-size:12px}
+.bk .stmt-head{border-bottom:2px solid #A85B0C;padding-bottom:8px;margin-bottom:12px}
+.bk .stmt-title{font-family:Georgia,serif;font-size:20px;font-weight:600;color:#854F0B}
+.bk .stmt-meta{font-size:11px;color:#555;margin-top:3px}
+.bk .stmt-sec{font-weight:700;font-size:12px;margin:14px 0 4px;color:#854F0B}
+.bk .stmt-sum{border-collapse:collapse;width:100%;max-width:340px;margin-bottom:6px}
+.bk .stmt-sum td{padding:4px 2px;border-bottom:1px solid #eee;font-size:13px}
+.bk .stmt-sum tr.bold td{font-weight:700;border-top:2px solid #333;border-bottom:none;font-size:14px}
+.bk .stmt-tbl{border-collapse:collapse;width:100%}
+.bk .stmt-tbl th{text-align:left;font-size:10.5px;color:#666;border-bottom:1px solid #999;padding:4px}
+.bk .stmt-tbl td{font-size:11px;padding:3px 4px;border-bottom:1px solid #eee}
+.bk .stmt .r{text-align:right;font-variant-numeric:tabular-nums}
 `;
