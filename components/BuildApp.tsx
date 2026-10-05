@@ -69,6 +69,7 @@ type SheetState =
   | { kind: "project" }
   | { kind: "editProject"; id: string }
   | { kind: "user" }
+  | { kind: "changepw" }
   | null;
 
 const KIND_WORD: Record<Kind, string> = { IN: "Payment", MAT: "Material", LAB: "Labour" };
@@ -142,7 +143,8 @@ export default function BuildApp({ meName }: { meName: string }) {
         </nav>
       </div>
 
-      {sheet?.kind === "user" && <UserSheet meName={meName} onClose={() => setSheet(null)} onLogout={logout} />}
+      {sheet?.kind === "user" && <UserSheet meName={meName} onClose={() => setSheet(null)} onLogout={logout} onChangePw={() => setSheet({ kind: "changepw" })} />}
+      {sheet?.kind === "changepw" && <ChangePwSheet meName={meName} onClose={() => setSheet(null)} onDone={() => setSheet(null)} />}
       {sheet?.kind === "project" && <ProjectSheet onClose={() => setSheet(null)} onSaved={(p) => { setProjects((x) => [...x, p]); setSheet(null); setView({ name: "project", id: p.id }); }} />}
       {sheet?.kind === "editProject" && (
         <ProjectEditSheet
@@ -442,16 +444,64 @@ function Scrim({ children, onClose }: { children: React.ReactNode; onClose: () =
   return <div className="scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="sheet">{children}</div></div>;
 }
 
-function UserSheet({ meName, onClose, onLogout }: { meName: string; onClose: () => void; onLogout: () => void }) {
+function UserSheet({ meName, onClose, onLogout, onChangePw }: { meName: string; onClose: () => void; onLogout: () => void; onChangePw: () => void }) {
   return (
     <Scrim onClose={onClose}>
       <div className="grab" />
       <h2>Account</h2>
       <div className="userrow"><span className="ava">{meName[0]}</span><div><div style={{ fontWeight: 600 }}>{meName}</div><div className="faint" style={{ fontSize: 12 }}>Signed in</div></div></div>
+      <button className="btn ghost" style={{ width: "100%", marginTop: 14 }} onClick={onChangePw}>🔑 Change password</button>
       <div className="srow">
         <button className="btn ghost" onClick={onClose}>Close</button>
         <button className="btn danger-full" onClick={onLogout}>Log out</button>
       </div>
+    </Scrim>
+  );
+}
+
+function ChangePwSheet({ meName, onClose, onDone }: { meName: string; onClose: () => void; onDone: () => void }) {
+  const [cur, setCur] = useState("");
+  const [n1, setN1] = useState("");
+  const [n2, setN2] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function save() {
+    if (!cur) { setErr("Purana password daalein."); return; }
+    if (n1.length < 4) { setErr("Naya password kam se kam 4 character ka ho."); return; }
+    if (n1 !== n2) { setErr("Naya password dono jagah same nahi hai."); return; }
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/build/password", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ current: cur, next: n1 }) });
+      const j = await r.json();
+      if (!r.ok) { setErr(j.error || "Password nahi badla."); setBusy(false); return; }
+      setDone(true); setBusy(false);
+    } catch { setErr("Network error."); setBusy(false); }
+  }
+
+  return (
+    <Scrim onClose={onClose}>
+      <div className="grab" />
+      <h2>Change password</h2>
+      {done ? (
+        <>
+          <div style={{ padding: "16px 2px", color: "var(--in-ink)", fontWeight: 600 }}>✓ Password badal gaya. Agli baar naye password se login karein.</div>
+          <div className="srow" style={{ marginTop: 0 }}><button className="btn primary" onClick={onDone}>Done</button></div>
+        </>
+      ) : (
+        <>
+          <div className="field"><label>Purana password</label><input type="password" value={cur} onChange={(e) => { setCur(e.target.value); setErr(""); }} /></div>
+          <div className="field"><label>Naya password</label><input type="password" value={n1} onChange={(e) => { setN1(e.target.value); setErr(""); }} /></div>
+          <div className="field"><label>Naya password dubara</label><input type="password" value={n2} onChange={(e) => { setN2(e.target.value); setErr(""); }} /></div>
+          {err && <div className="err show">{err}</div>}
+          <div className="srow">
+            <button className="btn ghost" onClick={onClose}>Cancel</button>
+            <button className="btn primary" onClick={save} disabled={busy}>{busy ? "…" : "Change"}</button>
+          </div>
+          <div className="demo">{meName} ka password</div>
+        </>
+      )}
     </Scrim>
   );
 }

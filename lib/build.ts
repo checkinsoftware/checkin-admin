@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { verifyPassword } from "@/lib/password";
+import { verifyPassword, hashPassword } from "@/lib/password";
 
 // Data layer for BuildKhata. All money is returned as a JS number, ids as
 // strings, dates as "YYYY-MM-DD" — so the client never deals with pg's raw
@@ -37,6 +37,24 @@ export async function verifyBuildUser(
   if (!ok) return null;
   await query("UPDATE build_users SET last_login_at = NOW() WHERE id = $1", [rows[0].id]);
   return { username: rows[0].username, name: rows[0].name };
+}
+
+/** A user changes their own password (verifies the current one first). */
+export async function changeBuildPassword(
+  username: string,
+  current: string,
+  next: string
+): Promise<"ok" | "not-found" | "wrong-current"> {
+  const rows = await query<{ id: string; password_hash: string }>(
+    "SELECT id::text AS id, password_hash FROM build_users WHERE lower(username) = lower($1) AND active LIMIT 1",
+    [username.trim()]
+  );
+  if (rows.length === 0) return "not-found";
+  const ok = await verifyPassword(current, rows[0].password_hash);
+  if (!ok) return "wrong-current";
+  const hash = await hashPassword(next);
+  await query("UPDATE build_users SET password_hash = $1 WHERE id = $2", [hash, rows[0].id]);
+  return "ok";
 }
 
 export async function listProjects(): Promise<BuildProject[]> {
